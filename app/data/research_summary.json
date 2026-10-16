@@ -1,0 +1,26 @@
+{
+  "imported_on": "2026-10-15",
+  "country_count": 6,
+  "csv_table_counts": {
+    "countries": 6,
+    "sources": 10,
+    "financial_benchmarks": 10,
+    "tuition_benchmarks": 8,
+    "fx_rates": 7,
+    "payment_quotes": 7
+  },
+  "verified_new_programs": 4,
+  "financial_benchmarks": 25,
+  "historical_reference_fx": 7,
+  "verified_provider_quotes": 0,
+  "source_registry_items": 44,
+  "important_warning": "Historical market FX is never a live payment provider quote; no provider quotes were verified.",
+  "source_errors": [
+    "Uploaded Melbourne course-fee PDF ending 20260422.pdf returned HTTP 404. Not added as a selectable tuition amount."
+  ],
+  "data_repairs": [
+    "Restored shifted verification_status/notes columns in payment_quotes.csv.",
+    "Changed blank source_id references to NULL; generated SQL that passes foreign_key_check.",
+    "Preserved missing numeric values as NULL rather than zero."
+  ]
+}

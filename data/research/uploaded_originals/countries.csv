@@ -1,0 +1,7 @@
+﻿country_code,country_name,currency_code,currency_name,data_status,notes
+CN,China,CNY,Chinese yuan,partial,Historical tuition reference only; current national living-cost benchmark not verified.
+GB,United Kingdom,GBP,Pound sterling,partial,Official visa maintenance values and a course-specific tuition value included.
+JP,Japan,JPY,Japanese yen,partial,JASSO living-cost data are from the 2023 survey.
+KR,South Korea,KRW,South Korean won,partial,Official portal tuition and living-cost estimates included.
+AU,Australia,AUD,Australian dollar,partial,Official visa financial-capacity requirement and one course fee included.
+BD,Bangladesh,BDT,Bangladeshi taka,partial,Official central-bank FX reference values included; national student living-cost benchmark not verified.

@@ -1,0 +1,8 @@
+﻿fx_id,base_currency,quote_currency,rate,rate_date,rate_type,source_id,verification_status,notes
+1,GBP,BDT,163.4634,2026-10-14,Bangladesh Bank cross-rate; BDT per 1 GBP,1,verified_official_reference,Published bid-side cross-rate; not a remittance quote.
+2,AUD,BDT,86.0983,2026-10-14,Bangladesh Bank cross-rate; BDT per 1 AUD,1,verified_official_reference,Published bid-side cross-rate; not a remittance quote.
+3,JPY,BDT,0.779,2026-10-14,Bangladesh Bank cross-rate; BDT per 1 JPY,1,verified_official_reference,Published cross-rate; not a remittance quote.
+4,CNH,BDT,18.4281,2026-10-14,Bangladesh Bank cross-rate; BDT per 1 CNH,1,verified_official_reference,"CNH is offshore yuan, not identical to onshore CNY."
+5,KRW,BDT,,,required pair; value not verified,,missing_official_value,Do not infer or substitute an unverified rate.
+6,CNY,AUD,,,StudentBridge demo corridor,,missing_official_value,No direct rate verified in this collection.
+7,JPY,GBP,,,StudentBridge demo corridor,10,missing_official_value,No direct rate verified in this collection.

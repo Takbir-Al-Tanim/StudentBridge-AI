@@ -1,0 +1,1 @@
+V5: 52 automated tests passed. Browser checkout flow (desktop/mobile): passed. Live XAMPP MySQL still requires local verification.

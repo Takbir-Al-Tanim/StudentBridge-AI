@@ -1,0 +1,22 @@
+# Optional local MySQL 8 database (requires Docker Desktop).
+# Set MYSQL_ROOT_PASSWORD and MYSQL_APP_PASSWORD in a private .env file.
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set_MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: studentbridge_ai
+      MYSQL_USER: studentbridge_app
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:?Set_MYSQL_APP_PASSWORD}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - studentbridge_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+volumes:
+  studentbridge_mysql:
