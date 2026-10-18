@@ -21,7 +21,7 @@ def test_catalog_has_six_countries_and_30_pairs():
 
 def test_health_and_home():
     assert client.get('/api/health').status_code==200
-    assert 'Your future has' in client.get('/').text
+    assert 'Your money.' in client.get('/').text
 
 def test_reference_fx_unavailable_does_not_fake_number():
     r=client.get('/api/fx?base=GBP&quote=GBP')

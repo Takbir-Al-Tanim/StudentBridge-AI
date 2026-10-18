@@ -16,6 +16,7 @@ def evaluate(payload: dict[str, Any], reference: dict | None = None) -> dict:
     tuition = D(payload['tuition_amount']); scholarship = D(payload.get('scholarship_amount',0))
     available = D(payload['available_balance']); reserve = D(payload.get('emergency_reserve',0))
     monthly = D(payload.get('monthly_living_cost',0)); months = int(payload.get('living_months',0))
+    protect_living = bool(payload.get('protect_living_costs', False))
     if min(tuition,scholarship,available,reserve,monthly) < 0 or months < 0:
         raise ValueError('Amounts must be nonnegative.')
     if scholarship > tuition:
@@ -32,14 +33,15 @@ def evaluate(payload: dict[str, Any], reference: dict | None = None) -> dict:
         if r<=0 or fixed<0 or pct<0 or pct>100 or eta<0:
             raise ValueError('Quote rate, fees or delivery estimate are invalid.')
         base=required*r; fee=base*pct/Decimal('100')+fixed; total=base+fee
-        remaining=available-total; usable=available-reserve
+        protected_living_origin=(monthly*months*r) if protect_living else D(0)
+        remaining=available-total; usable=available-reserve-protected_living_origin
         eligible=bool(q.get('eligible',False))
         deadline_ok=eta<=days and days>=0
         affordable=total<=usable
         issues=[]
         if not eligible: issues.append('Route eligibility not confirmed by user')
         if not deadline_ok: issues.append('Estimated delivery does not meet deadline')
-        if not affordable: issues.append('Insufficient funds after protected reserve')
+        if not affordable: issues.append('Insufficient funds after protected emergency reserve and living-cost buffer' if protect_living else 'Insufficient funds after protected reserve')
         if not q.get('source_url') and not q.get('simulation_only'): issues.append('Missing quote evidence URL')
         exp=q.get('expires_on')
         if exp:
@@ -52,6 +54,7 @@ def evaluate(payload: dict[str, Any], reference: dict | None = None) -> dict:
           'fixed_fee':float(fixed),'fee_percent':float(pct),'eta_days':eta,
           'base_cost':cents(base),'fee_total':cents(fee),'total':cents(total),
           'remaining':cents(remaining),'reserve_maintained':affordable,'deadline_ok':deadline_ok,
+          'protected_living_origin':cents(protected_living_origin),
           'viable':viable,'eligible_by_user':eligible, 'issues':issues,
           'source_url':q.get('source_url') or None,'expires_on':exp or None,
           'provenance':('ILLUSTRATIVE_SANDBOX_OPTION_NOT_A_REAL_PROVIDER' if q.get('simulation_only') else 'USER_ENTERED_QUOTE_NOT_INDEPENDENTLY_VERIFIED'), 'simulation_only':bool(q.get('simulation_only')), 
@@ -71,7 +74,7 @@ def evaluate(payload: dict[str, Any], reference: dict | None = None) -> dict:
       'destination_currency':payload['destination_currency'],'university':payload.get('university',''),
       'tuition_amount':cents(tuition),'scholarship_amount':cents(scholarship),'required_tuition':cents(required),
       'available_balance':cents(available),'emergency_reserve':cents(reserve),
-      'monthly_living_cost':cents(monthly),'living_months':months,
+      'monthly_living_cost':cents(monthly),'living_months':months,'protect_living_costs':protect_living,
       'living_budget_dest':cents(monthly*months),'deadline':str(due),'days_remaining':days,
       'quotes':result,'recommended_quote_id':best['quote_id'] if best else None,
       'recommendation':statement,'reference_rate':reference,'reference_only_estimate':ref_estimate,

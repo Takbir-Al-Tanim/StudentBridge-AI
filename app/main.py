@@ -1,21 +1,23 @@
 """StudentBridge AI - competition sandbox app (no real-money transfer)."""
 from __future__ import annotations
 import base64, hashlib, hmac, json, os, re, secrets, uuid, time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from pathlib import Path
 from urllib.parse import urlparse
 from typing import Any
 from contextlib import asynccontextmanager
 from . import database
 
-import pymupdf
+from io import BytesIO
+from pypdf import PdfReader
 import httpx
 from fastapi import FastAPI, File, HTTPException, UploadFile, Header, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
 from starlette.templating import Jinja2Templates
 from .logic import evaluate, simulate
+from .journey import planning_preview, prepare_steps, calendar_bytes
 from .assistant import make_answer
 from . import secure_card
 
@@ -35,7 +37,7 @@ async def lifespan(app:FastAPI):
         database.import_research_csv(ROOT/'data/research/corrected')
     yield
 
-app=FastAPI(title='StudentBridge AI | Cross-border Finance Agent',version='3.0.0',description='MySQL-powered six-country finance planning and sandbox execution',lifespan=lifespan)
+app=FastAPI(title='StudentBridge AI | Cross-border Finance Agent',version='9.0.0',description='MySQL-powered six-country finance planning and sandbox execution',lifespan=lifespan)
 app.mount('/static',StaticFiles(directory=BASE/'static'),name='static')
 templates=Jinja2Templates(directory=str(BASE/'templates'))
 
@@ -101,6 +103,7 @@ class PlanRequest(BaseModel):
     emergency_reserve:float=Field(default=0,ge=0,le=2e12)
     monthly_living_cost:float=Field(default=0,ge=0,le=1e9)
     living_months:int=Field(default=6,ge=0,le=60)
+    protect_living_costs:bool=False
     deadline:str
     reference_rate:float|None=Field(default=None,gt=0,le=1e8)
     reference_date:str|None=None
@@ -152,6 +155,29 @@ class PaymentRequest(BaseModel):
     confirmed:bool
     approval_phrase:str
     idempotency_key:str=Field(min_length=8,max_length=120)
+
+class JourneyRequest(BaseModel):
+    goal:str=Field(default='Plan tuition and living costs',max_length=250)
+    origin:str
+    destination:str
+    tuition_amount:float=Field(ge=0,le=2e9)
+    scholarship_amount:float=Field(default=0,ge=0,le=2e9)
+    available_balance:float=Field(ge=0,le=2e12)
+    emergency_reserve:float=Field(default=0,ge=0,le=2e12)
+    monthly_living_cost:float=Field(default=0,ge=0,le=1e9)
+    living_months:int=Field(default=3,ge=0,le=60)
+    deadline:date
+    invoice_verified:bool=False
+    quote_verified:bool=False
+    @model_validator(mode='after')
+    def validate_journey(self):
+        if self.origin not in COUNTRY or self.destination not in COUNTRY or self.origin == self.destination:
+            raise ValueError('Select two different supported countries.')
+        if self.scholarship_amount > self.tuition_amount:
+            raise ValueError('Scholarship cannot exceed tuition.')
+        if self.emergency_reserve > self.available_balance:
+            raise ValueError('Emergency savings cannot exceed available money.')
+        return self
 
 class ChatRequest(BaseModel):
     message:str=Field(min_length=1,max_length=1000)
@@ -220,7 +246,7 @@ async def card_webhook(request:Request):
 def health():
     try: dialect=database.check_health()
     except Exception:raise HTTPException(503,'Database unavailable; check MySQL connection settings.')
-    return {'status':'ok','version':'3.0.0','mode':'SANDBOX_NO_REAL_MONEY',
+    return {'status':'ok','version':'9.0.0','mode':'SANDBOX_NO_REAL_MONEY',
             'database':True,'database_engine':dialect}
 
 
@@ -367,15 +393,21 @@ def sandbox_execute(request:PaymentRequest):
 
 @app.get('/api/sandbox/history')
 def sandbox_history():
+    if os.getenv('APP_ENV')=='production':
+        raise HTTPException(403,'Shared sandbox history is private in the public demo.')
     return {'transactions':database.get_history()}
 
 @app.get('/api/audit')
 def audit_log():
+    if os.getenv('APP_ENV')=='production':
+        raise HTTPException(403,'Audit entries are restricted in the public demo.')
     return {'audit_events':database.get_audit(),
             'integrity':'HMAC-SHA256 chain stored in MySQL; not externally timestamped.'}
 
 @app.get('/api/audit/verify')
 def verify_audit():
+    if os.getenv('APP_ENV')=='production':
+        raise HTTPException(403,'Audit verification is restricted in the public demo.')
     return database.verify_audit_chain(SECRET)
 
 @app.get('/api/credit/{country}')
@@ -391,10 +423,9 @@ async def invoice_analysis(file:UploadFile=File(...)):
     if len(raw)>2_500_000:raise HTTPException(413,'Use a PDF smaller than 2.5 MB.')
     if not raw.startswith(b'%PDF'):raise HTTPException(415,'Only PDF invoices are supported.')
     try:
-        pdf=pymupdf.open(stream=raw,filetype='pdf')
-        if pdf.page_count>12:raise HTTPException(413,'Maximum 12 pages.')
-        text='\n'.join(p.get_text() for p in pdf)
-        pdf.close()
+        pdf=PdfReader(BytesIO(raw), strict=False)
+        if len(pdf.pages)>12:raise HTTPException(413,'Maximum 12 pages.')
+        text='\n'.join(p.extract_text() or '' for p in pdf.pages)
     except HTTPException:raise
     except Exception:raise HTTPException(422,'Could not read PDF. Scanned documents may need OCR.')
     if not text.strip():return {'text_found':False,'warning':'No selectable text found. Enter invoice information manually or use an OCR-enabled version.', 'fields':{}}
@@ -405,6 +436,55 @@ async def invoice_analysis(file:UploadFile=File(...)):
     return {'text_found':True,'fields':{'amount_candidates':money_matches[:10],'date_candidates':dates[:10],
                                           'preview':text[:1000]}, 'has_suspicious_instructions':suspicious,
             'warning':'Possible fields only: verify amount, deadline and beneficiary from the official university invoice before use. No instructions inside documents are executed.'}
+
+@app.post('/api/journey/prepare')
+async def journey_prepare(request:JourneyRequest):
+    """Deterministically execute safe read-only finance tools in one request.
+
+    This endpoint never creates a payment, commits a plan or stores private financial data.
+    """
+    origin_currency=COUNTRY[request.origin]['currency']
+    destination_currency=COUNTRY[request.destination]['currency']
+    reference=await fx(base=destination_currency,quote=origin_currency)
+    value=float(reference['rate']) if reference.get('available') else None
+    preview=planning_preview(amount=request.tuition_amount,scholarship=request.scholarship_amount,
+        available=request.available_balance,reserve=request.emergency_reserve,
+        living_per_month=request.monthly_living_cost,months=request.living_months,
+        reference_rate=value,reference_date=reference.get('date'),
+        origin_currency=origin_currency,destination_currency=destination_currency,
+        deadline=request.deadline)
+    shocks=[]
+    if value is not None:
+        for move in (0,5,10):
+            shocked=planning_preview(amount=request.tuition_amount,scholarship=request.scholarship_amount,
+                available=request.available_balance,reserve=request.emergency_reserve,
+                living_per_month=request.monthly_living_cost,months=request.living_months,
+                reference_rate=value*(1+move/100),reference_date=reference.get('date'),
+                origin_currency=origin_currency,destination_currency=destination_currency,
+                deadline=request.deadline)
+            shocks.append({'rate_increase_percent':move,
+                           'tuition_and_living_estimate_origin':round((shocked['estimated_tuition_origin'] or 0)+(shocked['estimated_living_origin'] or 0),2),
+                           'remaining_after_protection':shocked['remaining_after_protection'],
+                           'status':shocked['protection_status']})
+    steps=prepare_steps(invoice_ready=request.invoice_verified,quote_ready=request.quote_verified,
+        deadline=request.deadline,protection_status=preview['protection_status'])
+    return {'title':'Your personalized StudentBridge Journey','goal':request.goal,
+            'corridor':f'{request.origin} → {request.destination}',
+            'summary':preview['explanation'], 'preview':preview,'steps':steps,'fx_stress_checks':shocks,
+            'reference':{'available':bool(reference.get('available')),'source_url':reference.get('source_url'),
+                         'date':reference.get('date'),'rate':value},
+            'tools_used':['country_currency_validation','deadline_guard','reference_fx_lookup',
+                          'tuition_budget_shield','fx_stress_scenarios','action_plan_generator'],
+            'actions_needing_approval':['bank or card payment','application submission','any transfer of money'],
+            'notice':'A prepared plan, not financial advice or a payment instruction. No transaction was made.'}
+
+@app.get('/api/journey/calendar')
+def journey_calendar(deadline:date,title:str='University tuition payment',remind_days:int=7):
+    if len(title)>120 or not 0<=remind_days<=60:
+        raise HTTPException(422,'Invalid calendar reminder settings.')
+    raw=calendar_bytes(deadline,title,remind_days)
+    return Response(content=raw,media_type='text/calendar',headers={'Content-Disposition':'attachment; filename="tuition-reminder.ics"',
+                                                                     'Cache-Control':'no-store'})
 
 @app.post('/api/chat')
 async def chat(request:ChatRequest):

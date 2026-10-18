@@ -1,37 +1,21 @@
-__pycache__/
-.pytest_cache/
-.venv/
-.env
-*.pyc
-*.sqlite
-*.sqlite3
-*.db
-mysql_data/
-*.log
-.DS_Store
-.env
-.env.*
-!.env.example
-.venv/
-__pycache__/
-*.pyc
-.DS_Store
-
-# Secrets
+# Local settings and secret credentials
 .env
 .env.*
 !.env.example
 *.key
 *.p12
 
-# Python
+# Python build and test outputs
 .venv/
 venv/
 __pycache__/
-*.pyc
 .pytest_cache/
+*.pyc
 
-# Local files
-.DS_Store
-*.log
+# Runtime / local database files
+mysql_data/
+*.sqlite
 *.sqlite3
+*.db
+*.log
+.DS_Store

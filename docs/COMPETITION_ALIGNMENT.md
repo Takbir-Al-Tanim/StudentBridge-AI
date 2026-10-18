@@ -1,6 +1,6 @@
 # Competition Rules Compliance Matrix (2026 FinTechathon International Track)
 
-This project follows the user's uploaded **PBCSF Appendix 2 - Problem Description and Competition Rules for International Track** (4 pages), included at `docs/Competition_Rules.pdf`.
+This project follows the user's uploaded **PBCSF Appendix 2 - Problem Description and Competition Rules for International Track** (4 pages), previously supplied for private review. The public release does not redistribute the third-party PDF. Refer to the competition's official published rules and privacy policy.
 
 ## Topic C
 

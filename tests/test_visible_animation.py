@@ -6,8 +6,8 @@ def test_visible_country_route_controls_exist():
     assert 'id="hero-route-name"' in html
     assert 'id="hero-motion-toggle"' in html
     assert 'id="hero-route-try"' in html
-    assert 'href="/static/styles.css?v=7.0-topicc"' in html
-    assert 'src="/static/app.js?v=7.0-topicc"' in html
+    assert 'href="/static/styles.css?v=9.1"' in html
+    assert 'src="/static/app.js?v=9.1"' in html
     assert 'PAYMENTS · CLEAR AND SECURE' in html
 
 def test_country_route_animation_and_reduced_motion_controls():

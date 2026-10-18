@@ -51,6 +51,11 @@ def make_answer(message: str, catalog: dict, sources: list[dict], plan: dict | N
         return {'message':text,'tools_used':tools,'sources':citations[:5], 'actions':actions[:3],
                 'mode':'SOURCE_AWARE_ASSISTANT',
                 'safety':'Information and sandbox tools only. No real payment is possible.'}
+    if any(phrase in query for phrase in ('do everything for me', 'do it for me', 'automatic plan', 'automate my',
+                                           'plan my journey', 'plan everything', 'plan my tuition',
+                                           'organize my finances', 'make a complete plan', 'prepare my plan')):
+        action('Open one-click Journey Studio','studio')
+        return complete('I can prepare a tuition and living-cost brief with one action: check your origin and destination, fetch a dated reference FX rate, calculate a protected living-cost buffer, check your deadline, and prepare a downloadable reminder. Open Journey Studio and give me your amount, deadline and available funds. If you upload an invoice, I can suggest fields for your confirmation. A real bank quote and your approval are still needed for a real transfer.', 'journey_studio_workflow')
     # A useful tool call: perform a real deterministic financial what-if calculation.
     whatif=bool(re.search(r'\b(?:what if|if the rate|rate (?:rises|falls|goes up|drops)|exchange rate (?:rises|falls|changes))\b',query))
     percent=re.search(r'(\d+(?:\.\d+)?)\s*%',query)

@@ -9,14 +9,14 @@ const json=(obj)=>({method:'POST',headers:{'Content-Type':'application/json'},bo
 const countryObj=name=>catalog.countries.find(c=>c.name===name);
 const countryC=name=>countryObj(name)?.currency||'?';
 const sourceById=id=>catalog.sources.find(s=>s.id===id);
-function showView(name){$$('.view').forEach(x=>x.classList.toggle('active',x.id===name));$$('.nav-link').forEach(x=>x.classList.toggle('active',x.dataset.target===name));$('#breadcrumb-current').textContent=({overview:'Home',remit:'Send money',pay:'Tuition payments',planner:'Compare payment routes',currencies:'My currencies',twin:'My budget',credit:'Build credit',sources:'Our data',activity:'Payment history'})[name]||name;window.scrollTo({top:0,behavior:'smooth'});if(name==='activity')loadActivity()}
+function showView(name){$$('.view').forEach(x=>x.classList.toggle('active',x.id===name));$$('.nav-link').forEach(x=>x.classList.toggle('active',x.dataset.target===name));$('#breadcrumb-current').textContent=({overview:'Home',studio:'Journey Studio',remit:'Send money',pay:'Tuition payments',planner:'Compare payment routes',currencies:'My currencies',twin:'My budget',credit:'Build credit',sources:'Our data',activity:'Payment history'})[name]||name;window.scrollTo({top:0,behavior:'smooth'});if(name==='activity')loadActivity()}
 function countrySelect(id,selected){$(id).innerHTML=catalog.countries.map(c=>`<option value="${escapeHTML(c.name)}" ${selected===c.name?'selected':''}>${c.flag} ${c.name}</option>`).join('')}
 function updateCountries(){const orig=$('#origin').value,dest=$('#destination').value;const corridor=orig+'|'+dest;if(window.__lastCorridor&&window.__lastCorridor!==corridor){$('#tuition').value='';$('#quote-list').innerHTML='';activePlan=null;$('#plan-placeholder').classList.remove('hidden');$('#plan-output').classList.add('hidden');$('#plan-status').textContent='NOT ANALYZED';$('#plan-message').classList.add('hidden');}window.__lastCorridor=corridor;$('#origin-currency-pill').textContent=countryC(orig);$('#dest-currency-pill').textContent=countryC(dest);$('#t-currency').textContent=countryC(dest);$('#living-currency').textContent=countryC(dest);$('#a-currency').textContent=countryC(orig);let options=catalog.tuition.filter(t=>t.country===dest);$('#university').innerHTML='<option value="">Choose university or enter manually</option>'+options.map(t=>`<option value="${escapeHTML(t.id)}">${escapeHTML(t.institution)} · ${escapeHTML(t.program)}</option>`).join('');activeRef=null;$('#ref-rate').textContent='Not loaded';$('#ref-date').textContent='Fetch published reference FX, not a bank quote.';$('#tuition-source-note').textContent='Choose a program to see its official evidence link and enter actual payable amount.';const fb=(catalog.financial_benchmarks||[]).filter(x=>x.country===dest && (x.category.includes('visa_') || x.category==='student_living_cost_estimate' || x.category==='student_living_cost_estimate_lower')).slice(0,3);$('#destination-research-note').innerHTML=fb.length?'<strong>Published '+escapeHTML(dest)+' references:</strong> '+fb.map(x=>`${escapeHTML(x.label)}: ${fmt(x.amount,x.currency)} (${escapeHTML(x.unit||'')}; ${escapeHTML(x.period||'published')})`).join(' · ')+'<br><small>Financial requirement ≠ actual living expense. See Data & sources for evidence.</small>':'No suitable published financial benchmark in the local research collection. Enter your real costs manually.';if(orig===dest)toast('Select two different countries.',true)}
 function handleUni(){const t=catalog.tuition.find(t=>t.id===$('#university').value);if(!t)return;if(t.input_ready===false)$('#tuition').value='';else if(t.amount!==null)$('#tuition').value=t.amount;const s=sourceById(t.source_id);$('#tuition-source-note').innerHTML=t.amount!==null?`<strong>${escapeHTML(t.program)}:</strong> ${fmt(t.amount,t.currency)} for ${escapeHTML(t.period)} (${escapeHTML(t.year)}). <a href="${escapeHTML(s?.url||'#')}" target="_blank" rel="noopener">View official source ↗</a><br>Confirm the exact amount on your invoice.`:`${escapeHTML(t.note)} ${s?`<a href="${escapeHTML(s.url)}" target="_blank" rel="noopener">Official source ↗</a>`:''}`}
 function createQuote(){quotesSerial++;let id='user-quote-'+quotesSerial;const el=document.createElement('div');el.className='quote-card';el.dataset.quoteId=id;el.innerHTML=`<button class="quote-remove" aria-label="Remove quote" title="Remove this quote">×</button><div class="quote-title">PROVIDER QUOTE ${quotesSerial} <span style="color:#a8b8a9;font-weight:500">· entered by you</span></div><div class="quote-grid"><div class="field"><label>PROVIDER NAME</label><input data-quote="provider" placeholder="Bank / payment service"></div><div class="field"><label>EXACT QUOTED RATE (${escapeHTML(countryC($('#origin').value))} PER ${escapeHTML(countryC($('#destination').value))})</label><input data-quote="rate" type="number" min=".00000001" step="any" placeholder="From provider quote"></div><div class="field"><label>FIXED FEE (${escapeHTML(countryC($('#origin').value))})</label><input data-quote="fixed_fee" type="number" min="0" step="any" value="0"></div><div class="field"><label>FEE AS % OF CONVERTED AMOUNT</label><input data-quote="fee_percent" type="number" min="0" max="100" step="any" value="0"></div><div class="field"><label>EST. DELIVERY (DAYS)</label><input data-quote="eta_days" type="number" min="0" value="3"></div><div class="field"><label>QUOTE EXPIRY (IF ANY)</label><input data-quote="expires_on" type="date"></div><div class="field" style="grid-column:1/-1"><label>HTTPS QUOTE / PROVIDER EVIDENCE URL</label><input data-quote="source_url" type="url" placeholder="https://... (required for shortlist)"></div></div><label class="check-line"><input type="checkbox" data-quote="eligible"> I checked with the provider that this exact country pair and purpose are eligible.</label>`;$('#quote-list').appendChild(el);el.querySelector('.quote-remove').onclick=()=>el.remove();return el}
 function readQuotes(){return $$('.quote-card').map(el=>{const v=k=>el.querySelector(`[data-quote="${k}"]`).value;return {id:el.dataset.quoteId,provider:v('provider'),rate:Number(v('rate')),fixed_fee:Number(v('fixed_fee')),fee_percent:Number(v('fee_percent')),eta_days:Number(v('eta_days')),expires_on:v('expires_on')||null,source_url:v('source_url')||null,eligible:el.querySelector('[data-quote="eligible"]').checked}})}
 async function fetchReference(){const b=countryC($('#destination').value),q=countryC($('#origin').value);$('#ref-rate').textContent='Fetching…';let result=await api(`/api/fx?base=${encodeURIComponent(b)}&quote=${encodeURIComponent(q)}`);if(result.available){activeRef=result;$('#ref-rate').textContent=`1 ${b} = ${fmt(result.rate,q)}`;$('#ref-date').textContent=`Observation: ${result.date||'latest published'} · Reference market rate, no transfer fees.`;toast('Reference FX loaded. Provider quotes must still be entered separately.')}else{activeRef=null;$('#ref-rate').textContent='Unavailable';$('#ref-date').textContent='Could not reach the API. No rate has been guessed.';toast('FX API unavailable; enter a documented provider quote for real planning.',true)}}
-async function buildPlan(){let btn=$('#build-plan');btn.disabled=true;btn.textContent='Analyzing your plan…';try{const req={origin:$('#origin').value,destination:$('#destination').value,origin_currency:countryC($('#origin').value),destination_currency:countryC($('#destination').value),university:catalog.tuition.find(x=>x.id===$('#university').value)?.institution||'Student entered',tuition_amount:Number($('#tuition').value),scholarship_amount:Number($('#scholarship').value),available_balance:Number($('#available').value),emergency_reserve:Number($('#reserve').value),monthly_living_cost:Number($('#living').value||0),living_months:Number($('#months').value||0),deadline:$('#deadline').value,reference_rate:activeRef?.rate||null,reference_source:activeRef?'FRANKFURTER_LIVE':null,reference_date:activeRef?.date||null,reference_proof:activeRef?.proof||null,quotes:readQuotes()};if(!req.deadline)throw new Error('Please enter a tuition payment deadline.');if(req.tuition_amount<=0)throw new Error('Enter a tuition amount greater than zero.');if(!$('#available').value)throw new Error('Enter available funds, even if the available amount is zero.');activePlan=await api('/api/plans',json(req));renderPlan();$('#plan-message').classList.add('hidden');toast('Your comparison is ready. Ask Bridge AI to explain any option.')}catch(e){$('#plan-message').classList.remove('hidden');$('#plan-message').textContent=e.message;toast(e.message,true)}finally{btn.disabled=false;btn.innerHTML='Compare my options <span>→</span>'}}
+async function buildPlan(){let btn=$('#build-plan');btn.disabled=true;btn.textContent='Analyzing your plan…';try{const req={origin:$('#origin').value,destination:$('#destination').value,origin_currency:countryC($('#origin').value),destination_currency:countryC($('#destination').value),university:catalog.tuition.find(x=>x.id===$('#university').value)?.institution||'Student entered',tuition_amount:Number($('#tuition').value),scholarship_amount:Number($('#scholarship').value),available_balance:Number($('#available').value),emergency_reserve:Number($('#reserve').value),monthly_living_cost:Number($('#living').value||0),living_months:Number($('#months').value||0),protect_living_costs:$('#protect-living').checked,deadline:$('#deadline').value,reference_rate:activeRef?.rate||null,reference_source:activeRef?'FRANKFURTER_LIVE':null,reference_date:activeRef?.date||null,reference_proof:activeRef?.proof||null,quotes:readQuotes()};if(!req.deadline)throw new Error('Please enter a tuition payment deadline.');if(req.tuition_amount<=0)throw new Error('Enter a tuition amount greater than zero.');if(!$('#available').value)throw new Error('Enter available funds, even if the available amount is zero.');activePlan=await api('/api/plans',json(req));renderPlan();$('#plan-message').classList.add('hidden');toast('Your comparison is ready. Ask Bridge AI to explain any option.')}catch(e){$('#plan-message').classList.remove('hidden');$('#plan-message').textContent=e.message;toast(e.message,true)}finally{btn.disabled=false;btn.innerHTML='Compare my options <span>→</span>'}}
 function renderPlan(){let p=activePlan;$('#plan-placeholder').classList.add('hidden');$('#plan-output').classList.remove('hidden');$('#plan-status').textContent=p.recommended_quote_id?'CONDITIONALLY VIABLE':'REVIEW REQUIRED';$('#plan-required').textContent=fmt(p.required_tuition,p.destination_currency);$('#plan-corridor').textContent=p.origin+' → '+p.destination;$('#plan-days').textContent=p.days_remaining+' day(s)';$('#plan-reference').textContent=p.reference_only_estimate===null?'Not available':fmt(p.reference_only_estimate,p.origin_currency);$('#plan-recommendation').textContent=p.recommendation;$('#quote-results').innerHTML=p.quotes.length?p.quotes.map(q=>`<div class="quote-result"><div class="quote-top"><span>${escapeHTML(q.provider)}</span><span class="${q.viable?'status-good':'status-bad'}">${q.viable?'PASS CONDITIONS':'REVIEW'}</span></div><strong>${fmt(q.total,p.origin_currency)}</strong><small>Fees ${fmt(q.fee_total,p.origin_currency)} • ${q.eta_days} estimated days • user-supplied quote</small>${q.issues.length?`<small class="error">${escapeHTML(q.issues.join(' · '))}</small>`:''}</div>`).join(''):'<div class="result-inline">No provider quotes submitted. Real reference-rate conversion does not establish a payable total.</div>'}
 function showModal(html){$('#modal-content').innerHTML=html;$('#modal-overlay').classList.remove('hidden')}
 function closeModal(){$('#modal-overlay').classList.add('hidden')}
@@ -35,12 +35,34 @@ function paintSources(){
 function creditCountry(country){const c=catalog.credit_guidance[country],s=sourceById(c.source_id);$('#credit-body').innerHTML=`<div class="eyebrow">${escapeHTML(country.toUpperCase())} · FINANCIAL READINESS</div><h3>${escapeHTML(c.title)}</h3><p>Learn the correct steps before applying for banking or credit products in a new country.</p><div class="credit-steps">${c.steps.map((step,i)=>`<div class="credit-step"><span>${String(i+1).padStart(2,'0')}</span>${escapeHTML(step)}</div>`).join('')}</div><div class="passport-caption">${escapeHTML(c.disclaimer)}</div><p style="margin-top:17px">${s?`<a href="${escapeHTML(s.url)}" target="_blank" rel="noopener">Official / primary reference ↗</a>`:'Specific eligibility must be checked at the source.'}</p>`;$$('.credit-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.country===country))}
 function initCredit(){const names=catalog.countries.map(c=>c.name);$('#credit-tabs').innerHTML=names.map(c=>`<button data-country="${escapeHTML(c)}">${countryObj(c).flag} ${escapeHTML(c)}</button>`).join('');$$('.credit-tabs button').forEach(b=>b.onclick=()=>creditCountry(b.dataset.country));creditCountry('Australia')}
 async function loadActivity(){try{const [t,a]=await Promise.all([api('/api/sandbox/history'),api('/api/audit')]);$('#transactions-list').innerHTML=t.transactions.length?t.transactions.map(tx=>`<div class="activity-item"><span class="activity-dot"></span><div><strong>${escapeHTML(tx.id)}</strong><small>${escapeHTML(tx.status)} · ${fmt(tx.approved_amount,tx.currency)} · ${new Date(tx.created_at).toLocaleString()}</small><small>LOCAL SANDBOX • NO REAL MONEY</small></div></div>`).join(''):'<p class="muted">No sandbox transactions yet. Approve a viable test route in the planner to create an audit record.</p>';$('#audit-list').innerHTML=a.audit_events.length?a.audit_events.map(x=>`<div class="activity-item"><span class="activity-dot"></span><div><strong>${escapeHTML(x.event_type)}</strong><small>${escapeHTML(x.object_id)} · ${new Date(x.occurred_at).toLocaleString()}</small><small>Hash: ${escapeHTML(x.event_hash.slice(0,22))}…</small></div></div>`).join(''):'<p class="muted">No decisions recorded yet.</p>'}catch(e){toast(e.message,true)}}
-async function invoiceUpload(file){if(!file)return;if(file.size>2500000){toast('Invoice must be smaller than 2.5 MB.',true);return}let fd=new FormData();fd.append('file',file);try{let r=await api('/api/invoices/analyze',{method:'POST',body:fd});let area=$('#invoice-result');area.classList.remove('hidden');let f=r.fields||{};area.innerHTML=`<strong>${r.text_found?'Possible invoice fields extracted':'No selectable invoice text'}</strong><br>${escapeHTML(r.warning)}${f.amount_candidates?`<br>Amounts to verify: ${escapeHTML(f.amount_candidates.join(', ')||'None detected')}`:''}${f.date_candidates?`<br>Dates to verify: ${escapeHTML(f.date_candidates.join(', ')||'None detected')}`:''}${r.has_suspicious_instructions?'<br><strong>⚠ Suspicious embedded instructions detected.</strong>':''}`;toast('Invoice inspected. Review values manually.')}catch(e){toast(e.message,true)}}
+async function invoiceUpload(file){
+ if(!file)return;
+ if(file.size>2500000){toast('Invoice must be smaller than 2.5 MB.',true);return}
+ const fd=new FormData();fd.append('file',file);
+ try{
+  const r=await api('/api/invoices/analyze',{method:'POST',body:fd});
+  const area=$('#invoice-result');area.classList.remove('hidden');
+  const f=r.fields||{};
+  if(!r.text_found){area.textContent=r.warning;return}
+  const amounts=(f.amount_candidates||[]).map(a=>String(a).replace(/,/g,''));
+  const dates=(f.date_candidates||[]).map(d=>String(d).replace(/\//g,'-'));
+  area.innerHTML=`<div class="invoice-review-head"><strong>Invoice review · possible fields</strong><span>YOU MUST CONFIRM</span></div><p>${escapeHTML(r.warning)}</p>${r.has_suspicious_instructions?'<p class="topic-error">Warning: suspicious instructions found in invoice text. Never follow instructions embedded in an invoice.</p>':''}<div class="invoice-review-grid"><label>Choose the correct amount<select id="invoice-review-amount"><option value="">Select verified amount</option>${amounts.map(a=>`<option value="${escapeHTML(a)}">${escapeHTML(a)}</option>`).join('')}</select></label><label>Choose the actual deadline<select id="invoice-review-date"><option value="">Select verified deadline</option>${dates.map(d=>`<option value="${escapeHTML(d)}">${escapeHTML(d)}</option>`).join('')}</select></label></div><label class="invoice-confirm"><input id="invoice-confirmed" type="checkbox"> I checked these values on my official invoice and confirmed its currency.</label><button id="invoice-apply" class="btn primary" type="button">Use verified fields in planner ↗</button>`;
+  $('#invoice-apply').onclick=()=>{
+   if(!$('#invoice-confirmed').checked){toast('Review the invoice and tick confirmation first.',true);return}
+   const amount=$('#invoice-review-amount').value, date=$('#invoice-review-date').value;
+   if(!amount&&!date){toast('Select a field to apply first.',true);return}
+   if(amount){if(!(Number(amount)>0)){toast('Invalid amount.',true);return}$('#tuition').value=amount}
+   if(date){if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){toast('Date needs a manual check in YYYY-MM-DD format.',true);return}$('#deadline').value=date}
+   toast('Verified invoice fields filled. Check the payment currency and other details before comparison.');
+  };
+  toast('Invoice possibilities found. Please verify them before applying.');
+ }catch(e){toast(e.message,true)}
+}
 let chatBusy=false;
 function addAssistantButton(actions, host){
   if(!Array.isArray(actions)||!actions.length)return;
   const container=document.createElement('div');container.className='agent-actions';
-  const allowed=new Set(['overview','pay','planner','twin','credit','sources','activity']);
+  const allowed=new Set(['overview','studio','remit','currencies','pay','planner','twin','credit','sources','activity']);
   for(const a of actions){
     if(!allowed.has(a.target))continue;
     const button=document.createElement('button');button.type='button';button.className='agent-action';
@@ -287,7 +309,7 @@ function initCreditChecklist(){
  boxes.forEach(b=>b.onchange=()=>{$('#credit-progress').textContent=boxes.filter(el=>el.checked).length+' of '+boxes.length+' steps checked'});
 }
 
-async function init(){initVisibleRouteAnimation();catalog=await api('/api/catalog');initRemittance();initCurrencies();initCreditChecklist();initDemoPayment();initSecureCardCheckout();$('#current-date').textContent=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});countrySelect('#origin','China');countrySelect('#destination','Australia');updateCountries();let deadline=new Date();deadline.setDate(deadline.getDate()+45);$('#deadline').value=deadline.toISOString().slice(0,10);paintSources();initCredit();$$('.nav-link').forEach(b=>b.onclick=()=>showView(b.dataset.target));$$('[data-go]').forEach(b=>b.onclick=()=>showView(b.dataset.go));$$('[data-pair]').forEach(b=>b.onclick=()=>pair(...b.dataset.pair.split('|')));$('#origin').onchange=updateCountries;$('#destination').onchange=updateCountries;$('#swap-countries').onclick=()=>{let a=$('#origin').value;$('#origin').value=$('#destination').value;$('#destination').value=a;updateCountries()};$('#university').onchange=handleUni;$('#add-quote').onclick=createQuote;$('#fetch-rate').onclick=fetchReference;$('#build-plan').onclick=buildPlan;$('#open-passport').onclick=passport;$('#sandbox-pay').onclick=approvalModal;$('#close-modal').onclick=closeModal;$('#modal-overlay').onclick=e=>{if(e.target.id==='modal-overlay')closeModal()};$('#run-scenario').onclick=runScenario;$('#refresh-history').onclick=loadActivity;$('#invoice-file').onchange=e=>invoiceUpload(e.target.files?.[0]);['fx-change','extra-fee','living-change'].forEach(id=>{$('#'+id).oninput=()=>{let a=Number($('#fx-change').value),b=Number($('#living-change').value);$('#fx-change-label').textContent=(a>0?'+':'')+a+'%';$('#extra-fee-label').textContent=fmt($('#extra-fee').value,activePlan?.origin_currency||countryC($('#origin').value));$('#living-change-label').textContent=(b>0?'+':'')+b+'%'}});$('#chat-form').onsubmit=e=>{e.preventDefault();let m=$('#chat-input').value.trim();if(!m||chatBusy)return;$('#chat-input').value='';askChat(m)};$('#chat-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#chat-form').requestSubmit()}});$('#ask-agent-button').onclick=openBridgeAI;$('#open-assistant').onclick=openBridgeAI;$('#close-assistant').onclick=closeBridgeAI;$$('.prompt-chip').forEach(b=>b.onclick=()=>askChat(b.textContent));}
+async function init(){initVisibleRouteAnimation();catalog=await api('/api/catalog');initStudio();initRemittance();initCurrencies();initCreditChecklist();initDemoPayment();initSecureCardCheckout();$('#current-date').textContent=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});countrySelect('#origin','China');countrySelect('#destination','Australia');updateCountries();let deadline=new Date();deadline.setDate(deadline.getDate()+45);$('#deadline').value=deadline.toISOString().slice(0,10);paintSources();initCredit();$$('.nav-link').forEach(b=>b.onclick=()=>showView(b.dataset.target));$$('[data-go]').forEach(b=>b.onclick=()=>showView(b.dataset.go));$$('[data-pair]').forEach(b=>b.onclick=()=>pair(...b.dataset.pair.split('|')));$('#origin').onchange=updateCountries;$('#destination').onchange=updateCountries;$('#swap-countries').onclick=()=>{let a=$('#origin').value;$('#origin').value=$('#destination').value;$('#destination').value=a;updateCountries()};$('#university').onchange=handleUni;$('#add-quote').onclick=createQuote;$('#fetch-rate').onclick=fetchReference;$('#build-plan').onclick=buildPlan;$('#open-passport').onclick=passport;$('#sandbox-pay').onclick=approvalModal;$('#close-modal').onclick=closeModal;$('#modal-overlay').onclick=e=>{if(e.target.id==='modal-overlay')closeModal()};$('#run-scenario').onclick=runScenario;$('#refresh-history').onclick=loadActivity;$('#invoice-file').onchange=e=>invoiceUpload(e.target.files?.[0]);['fx-change','extra-fee','living-change'].forEach(id=>{$('#'+id).oninput=()=>{let a=Number($('#fx-change').value),b=Number($('#living-change').value);$('#fx-change-label').textContent=(a>0?'+':'')+a+'%';$('#extra-fee-label').textContent=fmt($('#extra-fee').value,activePlan?.origin_currency||countryC($('#origin').value));$('#living-change-label').textContent=(b>0?'+':'')+b+'%'}});$('#chat-form').onsubmit=e=>{e.preventDefault();let m=$('#chat-input').value.trim();if(!m||chatBusy)return;$('#chat-input').value='';askChat(m)};$('#chat-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#chat-form').requestSubmit()}});$('#ask-agent-button').onclick=openBridgeAI;$('#ai-start-studio').onclick=()=>{closeBridgeAI();showView('studio')};$('#open-assistant').onclick=openBridgeAI;$('#close-assistant').onclick=closeBridgeAI;$$('.prompt-chip').forEach(b=>b.onclick=()=>askChat(b.textContent));}
 init().catch(e=>{console.error(e);toast('Backend could not load. Run python run.py and refresh.',true)});
 
 
@@ -323,4 +345,97 @@ async function initSecureCardCheckout(){
    showView('pay');status.textContent='Card checkout was cancelled. No payment was confirmed.';
    url.searchParams.delete('card_checkout');window.history.replaceState({},'',url.pathname+url.search);
  }
+}
+
+
+// Journey Studio: safe, deterministic tool orchestration. No payment or external application is submitted.
+let lastJourney=null;
+function initStudio(){
+ countrySelect('#studio-origin','Bangladesh');countrySelect('#studio-destination','Australia');
+ const updateLabels=()=>{
+  $('#studio-origin-currency').textContent=countryC($('#studio-origin').value);
+  $('#studio-dest-currency').textContent=countryC($('#studio-destination').value);
+ };
+ $('#studio-origin').onchange=updateLabels;$('#studio-destination').onchange=updateLabels;updateLabels();
+ $('#studio-invoice-file').onchange=e=>reviewStudioInvoice(e.target.files?.[0]);
+ let day=new Date();day.setDate(day.getDate()+45);$('#studio-deadline').value=day.toISOString().slice(0,10);
+ $('#studio-form').onsubmit=async e=>{
+  e.preventDefault();const run=$('#studio-run');run.disabled=true;run.textContent='✦ Running your finance checks…';
+  try{
+   const obj={goal:$('#studio-goal').value.trim(),origin:$('#studio-origin').value,destination:$('#studio-destination').value,
+    tuition_amount:Number($('#studio-tuition').value),scholarship_amount:Number($('#studio-scholarship').value),
+    available_balance:Number($('#studio-available').value),emergency_reserve:Number($('#studio-reserve').value),
+    monthly_living_cost:Number($('#studio-living').value),living_months:Number($('#studio-months').value),
+    deadline:$('#studio-deadline').value,invoice_verified:false,quote_verified:false};
+   if(!$('#studio-available').value.trim())throw new Error('Please enter your available money.');
+   if(obj.tuition_amount<=0)throw new Error('Enter your tuition amount.');
+   if(obj.origin===obj.destination)throw new Error('Choose two different countries.');
+   lastJourney={request:obj,response:await api('/api/journey/prepare',json(obj))};renderStudioJourney();
+  }catch(err){toast(err.message,true)}finally{run.disabled=false;run.innerHTML='✦ Prepare my complete plan <span>→</span>'}
+ };
+ $('#studio-to-planner').onclick=()=>{
+  if(!lastJourney)return;
+  const r=lastJourney.request;
+  $('#origin').value=r.origin;$('#destination').value=r.destination;updateCountries();
+  $('#tuition').value=r.tuition_amount;$('#scholarship').value=r.scholarship_amount;
+  $('#available').value=r.available_balance;$('#reserve').value=r.emergency_reserve;
+  $('#living').value=r.monthly_living_cost;$('#months').value=r.living_months;
+  $('#deadline').value=r.deadline;$('#protect-living').checked=true;
+  showView('planner');toast('Planner filled. Add verified provider quotes before comparing or approving anything.');
+ };
+ $('#studio-calendar').onclick=async()=>{
+  if(!lastJourney)return;
+  const {deadline,goal}=lastJourney.request;
+  try{
+   const url=`/api/journey/calendar?deadline=${encodeURIComponent(deadline)}&title=${encodeURIComponent('University tuition deadline')}&remind_days=7`;
+   const res=await fetch(url);if(!res.ok)throw new Error('Calendar could not be created.');
+   const objectURL=URL.createObjectURL(await res.blob());
+   const anchor=document.createElement('a');anchor.href=objectURL;anchor.download='studentbridge-tuition-reminder.ics';
+   document.body.append(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(objectURL),3000);
+   toast('Reminder downloaded. Import the .ics file into your own calendar.');
+  }catch(err){toast(err.message,true)}
+ };
+}
+function renderStudioJourney(){
+ const r=lastJourney.response, p=r.preview;
+ $('#studio-placeholder').classList.add('hidden');$('#studio-output').classList.remove('hidden');
+ const status=p.protection_status==='indicative_covered'?'indicative':'attention';
+ $('#studio-status').className='studio-status '+status;
+ $('#studio-status').textContent=p.protection_status==='indicative_covered'?'◉ REFERENCE-RATE BUDGET CHECK PASSED':p.protection_status==='indicative_shortfall'?'△ INDICATIVE BUDGET SHORTFALL':'◷ A REFERENCE RATE IS UNAVAILABLE';
+ $('#studio-result-title').textContent=r.corridor+' · Your finance brief';
+ $('#studio-summary').textContent=r.summary;
+ const orig=p.origin_currency,dest=p.destination_currency;
+ const box=(label,value,note)=>`<div class="studio-kpi"><span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong><small>${escapeHTML(note)}</small></div>`;
+ $('#studio-kpis').innerHTML=box('Outstanding tuition',fmt(p.tuition_due,dest),'After scholarship')+
+  box('Protected living budget',p.estimated_living_origin===null?'Rate unavailable':fmt(p.estimated_living_origin,orig),`${p.living_months} month(s) · indicative`)+
+  box('Remaining after protections',p.remaining_after_protection===null?'Rate unavailable':fmt(p.remaining_after_protection,orig),'Before bank fees and FX spread')+
+  box('Days until deadline',p.deadline.days_left.toString(),`Start by ${p.deadline.latest_safe_start}, subject to provider confirmation`);
+ const shocks=r.fx_stress_checks||[];
+ $('#studio-shocks').classList.toggle('hidden',shocks.length===0);
+ $('#studio-shock-cards').innerHTML=shocks.map(x=>`<div class="studio-shock"><span>${x.rate_increase_percent===0?'Baseline':'Reference +'+x.rate_increase_percent+'%'}</span><strong>${fmt(x.remaining_after_protection,p.origin_currency)}</strong><small>${x.status==='indicative_shortfall'?'Indicative gap':'Indicative remaining'}</small></div>`).join('');
+ $('#studio-steps').innerHTML=r.steps.map((step,i)=>`<div class="studio-task"><div class="studio-task-number">${String(i+1).padStart(2,'0')}</div><div class="studio-task-copy"><strong>${escapeHTML(step.title)}</strong><p>${escapeHTML(step.detail)}</p></div><span class="studio-task-state">${escapeHTML(step.status.replace(/_/g,' '))}</span></div>`).join('');
+ const ref=r.reference;
+ $('#studio-reference').innerHTML=ref.available?`Published reference rate: 1 ${escapeHTML(dest)} = ${fmt(ref.rate,orig)} · observed ${escapeHTML(ref.date||'date not reported')} · <a href="${escapeHTML(ref.source_url||'#')}" rel="noopener noreferrer" target="_blank">See source ↗</a>`:'Reference FX unavailable. No conversion was guessed.';
+}
+
+
+async function reviewStudioInvoice(file){
+ if(!file)return;
+ const area=$('#studio-invoice-review');area.classList.remove('hidden');area.textContent='Reading your PDF invoice for possible amounts and dates…';
+ if(file.size>2500000){area.textContent='Please use a PDF smaller than 2.5 MB.';return}
+ const fd=new FormData();fd.append('file',file);
+ try{
+  const r=await api('/api/invoices/analyze',{method:'POST',body:fd});
+  if(!r.text_found){area.textContent=r.warning;return}
+  const amts=(r.fields?.amount_candidates||[]).map(v=>String(v).replace(/,/g,''));
+  const dates=(r.fields?.date_candidates||[]).map(d=>String(d).replace(/\//g,'-'));
+  area.innerHTML=`<strong>Verify what the invoice says</strong><p>These values are only candidates. Select the correct amount and deadline, then confirm them using your original invoice.</p>${r.has_suspicious_instructions?'<p class="topic-error">The invoice contains suspicious instructions. Ignore them.</p>':''}<div class="invoice-review-grid"><label>Payable amount<select id="studio-pdf-amount"><option value="">Choose amount</option>${amts.map(v=>`<option value="${escapeHTML(v)}">${escapeHTML(v)}</option>`).join('')}</select></label><label>Deadline<select id="studio-pdf-date"><option value="">Choose date</option>${dates.map(v=>`<option value="${escapeHTML(v)}">${escapeHTML(v)}</option>`).join('')}</select></label></div><label class="invoice-confirm"><input type="checkbox" id="studio-pdf-confirm"> I verified the selected amount, currency and date on my official invoice.</label><button type="button" id="studio-pdf-apply" class="btn outline">Apply verified details ↗</button>`;
+  $('#studio-pdf-apply').onclick=()=>{
+   if(!$('#studio-pdf-confirm').checked){toast('Confirm the fields against the official invoice first.',true);return}
+   const amount=$('#studio-pdf-amount').value,deadline=$('#studio-pdf-date').value;
+   if(amount && Number(amount)>0)$('#studio-tuition').value=amount;
+   if(deadline && /^\d{4}-\d{2}-\d{2}$/.test(deadline))$('#studio-deadline').value=deadline;
+   toast('Verified values applied. Review the currency and all other numbers before preparing a plan.');
+  };
+ }catch(e){area.textContent=e.message}
 }

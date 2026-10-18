@@ -13,7 +13,71 @@ It is built with **Python, FastAPI, MySQL, HTML, CSS, JavaScript, and an optiona
 
 **Repository:** [StudentBridge-AI on GitHub](https://github.com/Takbir-Al-Tanim/StudentBridge-AI)  
 **Project track:** FinTechathon — Topic C: Cross-border & Student Finance Assistant  
-**Document basis:** StudentBridge AI Topic C V7 code and accompanying project documentation (October 2026)
+**Document basis:** User-provided StudentBridge Topic C project, upgraded to Clarity V9 (October 2026)
+
+---
+
+## New in Clarity V9 — cleaner, consistent, feature-first UI
+
+V9 updates the **website design and wording** without replacing the existing finance engine:
+
+- **Less copy:** shorter introductions, simpler buttons and focused feature descriptions; duplicate marketing/process cards removed from the homepage.
+- **Balanced type scale:** normal text **16 px**, form labels **15 px**, feature names **18–20 px**, section headings around **25–28 px**, and restrained landing headings (**35 px mobile / up to 46 px desktop**). Small labels are easier to read.
+- **Feature-first homepage:** clear entry points for sending money, tuition, credit and currency balances, plus Journey Studio and source/route shortcuts.
+- **Cleaner visual rhythm:** unified spacing, fewer card variations, softer shadow, compact hero, streamlined mobile layout and reduced-motion support.
+- **Original design:** uses system fonts, authored CSS and the project's existing simple SVG/Unicode graphics. No competitor website assets, logos, font files or copied HTML/CSS are included.
+- **Same API and database:** no MySQL migrations or new Render environment variables are required for V9.
+
+See [Clarity V9 changes and screenshots](docs/CLARITY_V9.md), [originality and license assessment](docs/ORIGINALITY_AND_LICENSES.md), and [Render/Aiven upgrade guide](docs/UPGRADE_GITHUB_RENDER.md).
+
+![Clarity V9 homepage](docs/V9_Home_Desktop.png)
+
+![Clarity V9 mobile layout](docs/V9_Home_Mobile.png)
+
+> Screenshots are isolated UI previews with sample data. They are not proof of live banking connectivity, payment provider integration, or real exchange rates.
+
+---
+
+## ✦ New in Experience V8 — Journey Studio
+
+**A completely refreshed, original visual design:** larger readable interface, deep-indigo and mint color system, animated student-finance graphics, responsive cards and clear payment warnings. The new system-font styling does not require loading external font files.
+
+**One-click guided finance checks:** tell Journey Studio your corridor, tuition, savings and deadline. It fetches a dated reference FX rate (if available), prepares a tuition and protected living-cost estimate, calculates a deadline buffer, runs illustrative +5%/+10% FX stress scenarios, and explains what still needs verification. The studio never sends money, creates a live bank quote or submits applications.
+
+**Verified invoice-to-planner workflow:** upload a *text-selectable* university invoice PDF (2.5 MB / 12 pages) and explicitly confirm candidate amount/date values before transferring them to editable fields. Scanned PDF OCR and invoice authentication are not available.
+
+**Tuition calendar export:** download an `.ics` reminder and import it into Apple Calendar / Google Calendar / Outlook yourself. The website does not obtain calendar-account access or send scheduled notifications.
+
+**Optional living-cost protection:** the payment planner can reserve a user-selected number of living-expense months, converted using each user-entered provider rate, before deciding if a quote is affordable. The default behavior for old saved plans is preserved; turn on **Protect my living-cost budget** for this more conservative check.
+
+**Originality & open-source compliance:** see [docs/ORIGINALITY_AND_LICENSES.md](docs/ORIGINALITY_AND_LICENSES.md) for provenance, license pointers and the competition integrity checklist. The previous AGPL/commercial PDF library has been replaced with BSD-3-Clause `pypdf`.
+
+**Technical and deployment guides:** [V8 features and endpoints](docs/EXPERIENCE_V8.md) · [Upgrade your existing Render/Aiven setup](docs/UPGRADE_GITHUB_RENDER.md).
+
+### New workflow architecture
+
+```mermaid
+flowchart LR
+    U[Student's goal and reviewed inputs] --> J[Journey Studio]
+    I[Optional PDF invoice] --> V[Confirm extracted candidates]
+    V --> J
+    J --> C[Currency and deadline validation]
+    J --> FX[Dated reference FX lookup]
+    J --> B[Tuition and living-cost shield]
+    J --> S[Illustrative FX stress scenarios]
+    C --> R[Explainable journey brief]
+    FX --> R
+    B --> R
+    S --> R
+    R --> P[Planner with manually verified provider quotes]
+    R --> CAL[Local calendar reminder download]
+    P --> A{Student approves a sandbox payment?}
+    A -->|Yes, explicit confirmation| SIM[Practice-only receipt]
+    A -->|No| END[No payment]
+```
+
+![V8 homepage](docs/V8_Home_Desktop.png)
+![V8 Journey Studio](docs/V8_Journey_Desktop.png)
 
 ---
 
@@ -202,7 +266,7 @@ flowchart LR
 | Database | MySQL / compatible MariaDB, SQLAlchemy, PyMySQL | Stores plans, research, test transactions and audit events |
 | AI explanations | Source-aware rules, optional Gemini API | Understandable financial explanations and next-step guidance |
 | Exchange-rate reference | Frankfurter API | Published reference exchange rates, with observation dates |
-| Invoice processing | PyMuPDF | Reads selectable text from PDF invoices |
+| Invoice processing | pypdf | Reads selectable text from PDF invoices |
 | Optional hosted checkout | Stripe | Provider-hosted card details and payment confirmation, when authorized |
 | Tests | Pytest and FastAPI test client | Automated API and logic checks |
 
