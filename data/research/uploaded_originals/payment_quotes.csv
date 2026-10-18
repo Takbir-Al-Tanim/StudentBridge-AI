@@ -1,8 +1,0 @@
-﻿quote_id,origin_country_code,destination_country_code,provider_name,origin_currency,destination_currency,send_amount,receive_amount,fee_amount,fee_currency,quoted_fx_rate,delivery_time,quote_timestamp,quote_expiry,source_url,verification_status,notes
-1,CN,AU,,CNY,AUD,,,,,,,,,,,unverified_quote_required,"No provider-specific, timestamped CNY-to-AUD payout quote verified; route support must be confirmed."
-2,JP,GB,,JPY,GBP,,,,,,,,,,,unverified_quote_required,"No provider-specific, timestamped JPY-to-GBP payout quote verified; route support must be confirmed."
-3,BD,GB,,BDT,GBP,,,,,,,,,,,unverified_quote_required,No provider-specific BDT-origin tuition transfer quote verified.
-4,BD,AU,,BDT,AUD,,,,,,,,,,,unverified_quote_required,No provider-specific BDT-origin tuition transfer quote verified.
-5,BD,JP,,BDT,JPY,,,,,,,,,,,unverified_quote_required,No provider-specific BDT-origin tuition transfer quote verified.
-6,BD,KR,,BDT,KRW,,,,,,,,,,,unverified_quote_required,No provider-specific BDT-origin tuition transfer quote verified.
-7,BD,CN,,BDT,CNY,,,,,,,,,,,unverified_quote_required,No provider-specific BDT-origin tuition transfer quote verified.

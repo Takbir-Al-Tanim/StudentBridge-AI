@@ -1,9 +1,0 @@
-﻿tuition_id,country_code,institution,program,level,student_type,amount,currency_code,fee_basis,academic_year,source_id,verification_status,notes
-1,CN,,Liberal arts undergraduate tuition (minimum of published range),undergraduate,self-financed international students,14000,CNY,per_academic_year,historical MOE reference,7,official_but_historical,"Official page gives CNY 14,000–26,000/year; historical, not current pricing."
-2,CN,,Liberal arts undergraduate tuition (maximum of published range),undergraduate,self-financed international students,26000,CNY,per_academic_year,historical MOE reference,7,official_but_historical,"Official page gives CNY 14,000–26,000/year; historical, not current pricing."
-3,KR,,Average annual university tuition,undergraduate,national average,6820243.8,KRW,per_academic_year,current official portal page,5,verified_official_statistic,National average; not international-student-specific.
-4,KR,,Average annual university tuition,undergraduate,national/public average,4265841.8,KRW,per_academic_year,current official portal page,5,verified_official_statistic,National/public average.
-5,KR,,Average annual university tuition,undergraduate,private average,7625335.6,KRW,per_academic_year,current official portal page,5,verified_official_statistic,Private average.
-6,KR,,Average annual graduate tuition,graduate,national average,4216103.2,KRW,per_academic_year,current official portal page,5,verified_official_statistic,National average; verify individual university/program.
-7,GB,University College London,Computer Science BSc,undergraduate,overseas,46700,GBP,first_year_tuition,2026/27,8,verified_official_institution_fee,Course-specific fee; not a UK-wide average.
-8,AU,The University of Melbourne,Master of Supply Chain Management,masters,international,32000,AUD,per_EFTSL,2026,9,verified_official_institution_fee,Fee per EFTSL as listed in official 2026 schedule.
