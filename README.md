@@ -369,7 +369,7 @@ sequenceDiagram
     Frontend->>Backend: POST /api/transfers/prepare
     Backend->>Backend: Verify signed token and unchanged inputs
     Backend-->>Frontend: Instructions prepared only
-    Note over Backend,Frontend: No settlement provider is called; no funds moved
+    Note over Backend,Frontend: No settlement provider is called and no funds are moved
 ```
 
 The review token is an integrity/expiry safeguard, **not a bank payment authorization**. The bank details must be checked with a licensed provider before a real transfer.
