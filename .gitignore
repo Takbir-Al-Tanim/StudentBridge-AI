@@ -1,0 +1,21 @@
+# Local settings and secret credentials
+.env
+.env.*
+!.env.example
+*.key
+*.p12
+
+# Python build and test outputs
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Runtime / local database files
+mysql_data/
+*.sqlite
+*.sqlite3
+*.db
+*.log
+.DS_Store
