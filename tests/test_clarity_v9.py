@@ -16,10 +16,11 @@ def test_feature_first_navigation_and_less_copy():
 
 
 def test_loads_new_css_last_with_busted_cache():
-    assert 'clarity-v9.css?v=9.1' in HTML
-    assert 'styles.css?v=9.1' in HTML
-    assert 'app.js?v=9.1' in HTML
-    assert HTML.index('experience-v8.css?v=9.1') < HTML.index('clarity-v9.css?v=9.1')
+    assert 'clarity-v9.css?v=11.1' in HTML
+    assert 'finance-v10.css?v=11.1' in HTML
+    assert 'styles.css?v=11.1' in HTML
+    assert 'app.js?v=11.1' in HTML
+    assert HTML.index('experience-v8.css?v=11.1') < HTML.index('clarity-v9.css?v=11.1')
 
 
 def test_design_keeps_originality_and_readability():

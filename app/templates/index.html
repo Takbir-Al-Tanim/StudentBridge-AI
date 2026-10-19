@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>StudentBridge AI — Plan smarter abroad</title>
-<link rel="stylesheet" href="/static/styles.css?v=9.1"><meta name="description" content="Student finance, simplified. Plan tuition, transfers, budgets, and deadlines across six countries.">
-<link rel="stylesheet" href="/static/experience-v8.css?v=9.1"><link rel="stylesheet" href="/static/clarity-v9.css?v=9.1"></head><body>
+<link rel="stylesheet" href="/static/styles.css?v=11.1"><meta name="description" content="Student finance, simplified. Plan tuition, transfers, budgets, and deadlines across six countries.">
+<link rel="stylesheet" href="/static/experience-v8.css?v=11.1"><link rel="stylesheet" href="/static/clarity-v9.css?v=11.1"><link rel="stylesheet" href="/static/finance-v10.css?v=11.1"></head><body>
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand"><span class="brand-mark">✳</span><div><strong>studentbridge<span class="brand-ai">.ai</span></strong><small>STUDENT FINANCE, SIMPLIFIED</small></div></div>
@@ -10,6 +10,7 @@
     <nav id="side-nav">
       <button data-target="studio" class="nav-link studio-nav"><span class="nav-symbol">✦</span> Journey Studio <span class="nav-new">NEW</span></button>
       <button data-target="overview" class="nav-link active"><span class="nav-symbol">◫</span> Home</button>
+      <button data-target="profile" class="nav-link"><span class="nav-symbol">◌</span> My profile</button>
       <button data-target="remit" class="nav-link"><span class="nav-symbol">↗</span> Send money</button>
       <button data-target="pay" class="nav-link demo-pay-nav"><span class="nav-symbol">▣</span> Tuition payments</button>
       <button data-target="planner" class="nav-link"><span class="nav-symbol">⇄</span> Compare payment routes</button>
@@ -23,7 +24,7 @@
     <div class="sidebar-bottom"><div class="shield-dot">♧</div><div><strong>Decision-support sandbox</strong><small>Practice mode · No real transfers</small></div><span class="online-dot"></span></div>
   </aside>
   <div class="main-shell">
-    <header class="topbar"><div class="breadcrumb"><span>StudentBridge</span><span class="slash">/</span><strong id="breadcrumb-current">Overview</strong></div><div class="top-actions"><button id="open-assistant" type="button" class="btn ai-open-button">✳ Ask Bridge AI</button><span class="status-pill"><i></i> TOPIC C · V9</span><span class="topbar-date" id="current-date"></span><button class="profile-button" title="StudentBridge workspace">SB</button></div></header>
+    <header class="topbar"><div class="breadcrumb"><span>StudentBridge</span><span class="slash">/</span><strong id="breadcrumb-current">Overview</strong></div><div class="top-actions"><button id="open-assistant" type="button" class="btn ai-open-button">✳ Ask Bridge AI</button><span class="status-pill"><i></i> TOPIC C · V11.1</span><span class="topbar-date" id="current-date"></span><button class="profile-button" id="top-profile-button" title="Open profile">SB</button></div></header>
     <main class="content">
       <div class="trust-strip"><div class="trust-strip-left"><span class="pulse-mini"></span> CLEAR COSTS · CLEAR CHOICES <span class="trust-dot">✦</span> PLANNING ONLY · NO LIVE TRANSFERS</div><button class="trust-strip-action" data-go="sources">Data sources →</button></div>
       <section id="overview" class="view active">
@@ -94,22 +95,44 @@
         <div class="studio-more"><div class="studio-more-head"><span class="studio-step-caption">BUILT FOR REAL STUDENT DECISIONS</span><h2>Go beyond exchange rates</h2></div><div class="studio-more-grid"><article><span>01 / Know every cost</span><h3>Fee-aware decisions</h3><p>Compare documented costs and deadlines.</p></article><article><span>02 / Protect essentials</span><h3>Living-cost shield</h3><p>Protect rent and essentials before paying tuition.</p></article><article><span>03 / See the reasoning</span><h3>Decision Passport</h3><p>See the reasoning behind each recommendation.</p></article></div></div>
       </section>
 
-      <section id="remit" class="view">
-        <div class="simple-head"><span class="simple-kicker">01 · REMITTANCES</span><h1>Send money</h1><p>Estimate cross-border transfers using reference FX.</p></div>
-        <div class="topic-workspace">
-          <div class="panel topic-form">
-            <h2>Calculate a transfer</h2><p>Choose origin and destination.</p>
-            <div class="topic-fields two"><label>Sending country<select id="remit-from"></select></label><label>Receiving country<select id="remit-to"></select></label></div>
-            <div class="topic-fields"><label><span>How much will you send? (<b id="remit-currency-from"></b>)</span><input id="remit-amount" type="number" min="0.01" step="0.01" value="1000"></label></div>
-            <h3>Optional: Enter charges from your bank</h3>
-            <p>Enter provider fees, if known.</p>
-            <div class="topic-fields two"><label><span>Bank fee (<b id="remit-fee-currency"></b>)</span><input id="remit-fee" type="number" min="0" step="0.01" value="0"></label><label>Bank rate markup (%)<input id="remit-markup" type="number" min="0" max="99" step="0.1" value="0"></label></div>
-            <button id="remit-calculate" class="btn primary topic-wide">Calculate transfer →</button>
-            <p class="topic-disclaimer">Estimate only. Confirm final rates and route eligibility with your provider.</p>
-          </div>
-          <div class="panel topic-result"><h2>Your transfer estimate</h2><div id="remit-result" aria-live="polite" class="topic-placeholder">Enter a sending amount and choose Calculate transfer.</div><button data-go="planner" class="btn outline topic-wide">Compare actual bank quotes →</button><button data-go="pay" class="btn outline topic-wide topic-secondary">Pay tuition →</button></div>
+      
+      <section id="remit" class="view finance-v10 banking-flow">
+        <div class="finance-heading"><div><span class="finance-eyebrow">GUIDED TRANSFER FLOW · BENEFICIARY FIRST</span><h1>Send money</h1><p>A clearer, step-by-step experience for cross-border student payments.</p></div><span class="finance-chip">🔒 Multi-step review</span></div>
+        <div class="finance-banner"><span aria-hidden="true">ⓘ</span><div><strong>How this flow works</strong><p>Sign in to save beneficiaries, choose a transfer corridor, select a payment method, then create a server-validated review. StudentBridge does not move money or collect card numbers on this page.</p></div></div>
+        <div class="banking-steps"><span class="current">01 Sign in</span><span>02 Add beneficiary</span><span>03 Choose method</span><span>04 Review</span></div>
+        <div class="finance-grid banking-grid">
+          <form id="remit-form" class="finance-panel remit-panel" autocomplete="off">
+            <div class="banking-step-card"><div class="finance-section-title"><span class="finance-step">01</span><div><h2>Sign in and choose corridor</h2><p>Saved beneficiaries appear after you sign in.</p></div></div>
+              <div id="remit-auth-state" class="remit-auth-state">You are not signed in yet. Sign in to save beneficiaries and view your profile.</div>
+              <div class="finance-field-grid"><label class="finance-field">Send from<select id="remit-from" required></select></label><label class="finance-field">Send to<select id="remit-to" required></select></label></div>
+              <div class="finance-field-grid"><label class="finance-field">Your full name<input id="remit-sender-name" type="text" maxlength="90" placeholder="Name shown on your account" autocomplete="name" required></label><label class="finance-field"><span>Amount to send (<b id="remit-currency-from">CNY</b>)</span><input id="remit-amount" type="number" min="0.01" max="10000000" step="0.01" placeholder="e.g. 1000.00" required></label></div>
+            </div>
+
+            <div class="banking-step-card"><div class="finance-section-title"><span class="finance-step">02</span><div><h2>Add or select beneficiary</h2><p>Save frequently used recipients for future transfers.</p></div></div>
+              <div class="finance-field-grid"><label class="finance-field">Saved beneficiaries<select id="beneficiary-saved"><option value="">Choose saved beneficiary</option></select></label><label class="finance-field">Beneficiary label<input id="beneficiary-nickname" type="text" maxlength="60" placeholder="e.g. University account"></label></div>
+              <div class="finance-field-grid"><label class="finance-field">Account holder name<input id="remit-beneficiary" type="text" maxlength="90" placeholder="Beneficiary's legal name" autocomplete="off" required></label><label class="finance-field">Bank name<input id="remit-bank" type="text" maxlength="120" placeholder="Receiving bank" required></label></div>
+              <div class="finance-field-grid"><label class="finance-field">Account number<input id="remit-account" type="text" maxlength="30" inputmode="numeric" placeholder="Beneficiary account number" required></label><label class="finance-field"><span id="remit-route-label">Bank routing / branch code</span><input id="remit-routing" type="text" maxlength="20" placeholder="Local clearing code" required><small id="remit-route-hint">Varies by destination country</small></label></div>
+              <div class="finance-field-grid"><label class="finance-field"><span id="remit-area-label">City / area</span><input id="remit-area" type="text" maxlength="90" placeholder="Receiving bank location" required></label><label class="finance-field">SWIFT / BIC <em>(if provided)</em><input id="remit-swift" type="text" maxlength="11" placeholder="8 or 11 characters" style="text-transform:uppercase"></label></div>
+              <div class="beneficiary-actions"><label class="finance-check"><input id="beneficiary-save-toggle" type="checkbox"> Save this beneficiary to my profile</label><button id="beneficiary-save-button" class="btn outline" type="button">Add beneficiary + save</button></div>
+              <div id="beneficiary-feedback" class="finance-feedback hidden" role="alert"></div>
+            </div>
+
+            <div class="banking-step-card"><div class="finance-section-title"><span class="finance-step">03</span><div><h2>Choose payment method</h2><p>Professional banking flows usually separate bank and card funding.</p></div></div>
+              <div class="finance-methods"><label class="finance-method is-selected"><input type="radio" name="remit-method" value="bank" checked><span class="finance-method-icon">🏦</span><span><strong>Bank transfer</strong><small>Best for beneficiary bank accounts</small></span></label><label class="finance-method"><input type="radio" name="remit-method" value="card"><span class="finance-method-icon">💳</span><span><strong>Visa / Mastercard</strong><small>Continue to hosted checkout</small></span></label></div>
+              <div id="remit-card-info" class="finance-info hidden"><strong>Card payments follow a separate secure path.</strong><p>Use a licensed provider's hosted checkout page for card number, expiry date and CVC entry. StudentBridge never shows a raw card-entry form here.</p><button type="button" class="finance-text-link" id="remit-card-link">Go to tuition card payment flow →</button></div>
+              <div class="remit-flow-actions"><button type="button" class="btn ghost" id="remit-open-login">Open profile / sign in</button><button type="submit" id="remit-calculate" class="btn primary finance-submit">Continue to review →</button></div>
+              <div id="remit-feedback" class="finance-feedback hidden" role="alert"></div>
+              <p class="finance-private-note">🔒 Full beneficiary details stay in your active session only. Card credentials are never accepted on this page.</p>
+            </div>
+          </form>
+          <aside class="finance-panel finance-review"><div class="finance-section-title"><span class="finance-step">04</span><div><h2>Transfer review</h2><p>Generated and validated by the server before final confirmation.</p></div></div>
+            <div id="remit-result" class="finance-empty remit-review-empty" aria-live="polite"><div class="finance-empty-symbol">↗</div><strong>Ready for review</strong><p>Complete the steps on the left to generate a transfer summary, then confirm the beneficiary details.</p></div>
+            <div id="remit-confirm-wrap" class="hidden"><label class="finance-check"><input id="remit-confirm" type="checkbox"> I reviewed the beneficiary details and understand that this prepares instructions only.</label><button id="remit-confirm-button" class="btn primary finance-submit" type="button" disabled>Prepare transfer instructions →</button></div>
+            <div class="finance-side-note"><strong>Before sending money</strong><p>Verify account number, branch code, fees and final FX with your licensed provider. Beneficiary saving is for convenience only and does not confirm account ownership.</p></div>
+          </aside>
         </div>
       </section>
+
 
       <section id="currencies" class="view">
         <div class="simple-head"><span class="simple-kicker">04 · MULTI-CURRENCY MANAGEMENT</span><h1>Your currencies</h1><p>View your balances in one currency.</p></div>
@@ -156,13 +179,30 @@
         <div class="demo-disclaimer"><strong>Why use this?</strong> You can test a payment safely, compare example charges, understand the steps and get a receipt. For a real transfer, use a licensed bank or provider and verify its price and route first.</div>
       </section>
 
-      <section id="planner" class="view">
-        <div class="page-head"><div><div class="eyebrow">PAYMENT PLANNER</div><h1>Compare tuition routes<span class="period">.</span></h1><p>Compare your documented payment quotes.</p></div><div class="head-symbol">⇄</div></div>
-        <div class="planner-layout"><div class="stack"><div class="panel form-panel"><div class="panel-heading"><span class="step-bubble">01</span><div><h3>Choose two countries</h3><p>Choose a planning pair.</p></div></div><div class="route-inputs"><label class="field">MONEY SENT FROM<select id="origin"></select></label><button class="swap-btn" id="swap-countries" title="Swap countries">⇄</button><label class="field">UNIVERSITY COUNTRY<select id="destination"></select></label></div><div class="currency-ribbon"><span id="origin-currency-pill">CNY</span><span class="ribbon-line"><i></i> CROSS-BORDER <i></i></span><span id="dest-currency-pill">AUD</span></div></div>
-        <div class="panel form-panel"><div class="panel-heading"><span class="step-bubble">02</span><div><h3>Enter your university fees</h3><p>Enter the invoice amount.</p></div></div><div class="field"><label>PUBLISHED UNIVERSITY EXAMPLES</label><select id="university"><option value="">Choose university or enter manually</option></select></div><div class="form-grid"><div class="field"><label>TUITION DUE <span id="t-currency">AUD</span></label><input id="tuition" type="number" min="0" step="0.01" placeholder="Enter exact invoice amount"></div><div class="field"><label>SCHOLARSHIP / WAIVER</label><input id="scholarship" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>PAYMENT DEADLINE</label><input id="deadline" type="date"></div><div class="field"><label>MONTHLY LIVING COST <span id="living-currency">AUD</span></label><input id="living" type="number" min="0" step="0.01" placeholder="Optional"></div></div><div class="form-grid"><div class="field"><label>AVAILABLE FUNDS <span id="a-currency">CNY</span></label><input id="available" type="number" min="0" step="0.01" placeholder="Total funds available"></div><div class="field"><label>PROTECTED EMERGENCY RESERVE</label><input id="reserve" type="number" min="0" step="0.01" value="0"></div></div><div class="field"><label>MONTHS TO PLAN FOR</label><input id="months" type="number" min="0" max="60" value="6"></div><label class="protect-living-label"><input type="checkbox" id="protect-living"> <span><strong>Protect my living-cost budget</strong><small>Reserve your selected months of living expenses, converted using each user-entered quote rate. This may disqualify otherwise affordable routes.</small></span></label><div id="destination-research-note" class="info-note" aria-live="polite">Published benchmarks are not your invoice.</div><div id="tuition-source-note" class="info-note">Verify fees against your invoice.</div><div class="upload-row"><div><strong>Have a PDF invoice?</strong><small>Extract potential amounts and dates. Verify before use.</small></div><label class="file-action">Upload PDF<input type="file" id="invoice-file" accept="application/pdf" hidden></label></div><div id="invoice-result" class="result-inline hidden"></div></div>
-        <div class="panel form-panel"><div class="panel-heading"><span class="step-bubble">03</span><div><h3>Add bank quotes to compare</h3><p>Use quotes from verified providers only.</p></div></div><div class="reference-row"><div><span class="mini-label">REFERENCE EXCHANGE RATE</span><strong id="ref-rate">Not loaded</strong><small id="ref-date">A market reference is not a transaction quote.</small></div><button id="fetch-rate" class="btn small dark">Get reference rate ↗</button></div><div id="quote-list"></div><button class="add-quote" id="add-quote">＋ Add another bank quote</button><p class="fine-print">Quotes entered here are treated as <strong>user supplied and unverified</strong>, even if you attach a link. They do not authorize real transfers.</p><button id="build-plan" class="btn primary full">Compare my options <span>→</span></button><div id="plan-message" class="alert hidden"></div></div></div>
-        <div class="stack result-column"><div class="panel summary-panel"><div class="summary-header"><div><div class="eyebrow">DECISION INTELLIGENCE</div><h3>Your payment result</h3></div><span class="status-quiet" id="plan-status">NOT ANALYZED</span></div><div id="plan-placeholder" class="empty-state"><div class="empty-orbit">✳</div><strong>Your result will appear here.</strong><p>Check your options and conditions.</p></div><div id="plan-output" class="hidden"><div class="plan-headline"><div class="mini-label">OUTSTANDING TUITION</div><strong id="plan-required">—</strong><span id="plan-corridor">—</span></div><div class="result-stat-row"><div><small>DEADLINE</small><strong id="plan-days">—</strong></div><div><small>REFERENCE CONVERSION</small><strong id="plan-reference">—</strong></div></div><div class="rec-box"><span class="mini-label">RECOMMENDATION</span><p id="plan-recommendation"></p></div><div class="quote-results" id="quote-results"></div><button id="open-passport" class="btn outline full">Why this result? View details <span>↗</span></button><div class="sandbox-action"><div><strong>Try a test payment</strong><small>Approval required. No real funds leave any bank.</small></div><button id="sandbox-pay" class="btn small dark">Review ↗</button></div></div></div><div class="panel aside-note"><div class="eyebrow">HOW WE KEEP THIS SAFE</div><div class="safe-row"><span>✓</span> We calculate costs using clear formulas.</div><div class="safe-row"><span>✓</span> We ask you to check the provider supports your route.</div><div class="safe-row"><span>✓</span> Each quote shows where it came from.</div><div class="safe-row"><span>✓</span> A test payment needs your approval.</div><div class="safe-row"><span>✓</span> We never invent missing prices.</div></div></div></div>
+      
+      <section id="planner" class="view finance-v10 compare-v11">
+        <div class="finance-heading"><div><span class="finance-eyebrow">SIMPLE COMPARISON · LESS INPUTS</span><h1>Compare payment routes</h1><p>Pick a corridor, enter the payable amount, and compare a few clear payment routes.</p></div><span class="finance-chip">⚖ Cleaner decisions</span></div>
+        <div class="finance-banner"><span aria-hidden="true">ⓘ</span><div><strong>What changed</strong><p>This page now focuses on the few things a banking customer really needs: corridor, amount, deadline and optional invoice upload. We removed unrelated planning fields from the main comparison flow.</p></div></div>
+        <div class="compare-simple-grid">
+          <div class="finance-panel">
+            <div class="finance-section-title"><span class="finance-step">01</span><div><h2>Choose countries</h2><p>Set where the payment starts and where it needs to arrive.</p></div></div>
+            <div class="compare-corridor-box"><label class="finance-field">Money sent from<select id="origin"></select></label><button id="swap-countries" type="button" class="swap-compact" aria-label="Swap countries">⇄</button><label class="finance-field">University country<select id="destination"></select></label></div>
+            <div class="compare-currency-pills"><span id="origin-currency-pill">CNY</span><span>CROSS-BORDER</span><span id="dest-currency-pill">AUD</span></div>
+            <div class="finance-divider"></div>
+            <div class="finance-section-title"><span class="finance-step">02</span><div><h2>Enter payment details</h2><p>Only the amount and deadline are required.</p></div></div>
+            <div class="finance-field-grid"><label class="finance-field">Payable amount (<b id="t-currency">AUD</b>)<input id="tuition" type="number" min="0" step="0.01" placeholder="e.g. 8000"></label><label class="finance-field">Payment deadline<input id="deadline" type="date"></label></div>
+            <div class="finance-field-grid"><label class="finance-field">Recipient or university name <em>(optional)</em><input id="compare-school" type="text" maxlength="120" placeholder="e.g. University of Melbourne"></label><div class="invoice-upload-box"><strong>Upload a tuition PDF</strong><span>We can try to detect the amount or due date.</span><label class="invoice-upload-trigger" for="invoice-file">↑ Upload invoice PDF</label><input type="file" id="invoice-file" accept=".pdf,application/pdf"><span class="invoice-file-state" id="invoice-file-state">PDF up to 4 MB</span></div></div>
+            <div id="invoice-result" class="finance-invoice-result hidden" aria-live="polite"></div>
+            <button id="compare-routes-simple" type="button" class="btn primary finance-submit">Compare routes →</button><div id="plan-message" class="finance-feedback hidden" role="alert"></div>
+            <p class="finance-private-note">These routes are indicative comparisons for demonstration. They are not live provider offers or bank commitments.</p>
+          </div>
+          <aside class="finance-panel compare-results-simple"><div class="finance-section-title"><span class="finance-step">✓</span><div><h2>Recommended routes</h2><p>Simple cards with cost, speed and suitability.</p></div></div>
+            <div id="plan-placeholder" class="finance-empty"><div class="finance-empty-symbol">⇄</div><strong>No comparison yet</strong><p>Enter a corridor and amount to see route cards.</p></div>
+            <div id="plan-output" class="hidden"><div class="plan-headline"><div class="mini-label">PAYABLE AMOUNT</div><strong id="plan-required">—</strong><span id="plan-corridor">—</span></div><div id="quote-results" class="route-card-list"></div></div>
+          </aside>
+        </div>
       </section>
+
 
       <section id="twin" class="view"><div class="page-head"><div><div class="eyebrow">BUDGET SIMULATOR · FINANCIAL DIGITAL TWIN</div><h1>Budget stress test<span class="period">.</span></h1><p>Test rate, fee and living-cost changes.</p></div><div class="head-symbol">◈</div></div><div class="twin-grid"><div class="panel twin-settings"><div class="panel-heading"><span class="step-bubble">◈</span><div><h3>Change the numbers</h3><p>Adjust the sliders.</p></div></div><div class="range-field"><div><label>EXCHANGE-RATE CHANGE</label><strong id="fx-change-label">+5%</strong></div><input id="fx-change" type="range" min="-20" max="30" value="5" step="1"><div class="range-mark"><span>−20%</span><span>0%</span><span>+30%</span></div></div><div class="range-field"><div><label>EXTRA BANK CHARGE</label><strong id="extra-fee-label">0</strong></div><input id="extra-fee" type="range" min="0" max="1000" value="0" step="25"><div class="range-mark"><span>0</span><span>500</span><span>1,000</span></div></div><div class="range-field"><div><label>LIVING COST CHANGE</label><strong id="living-change-label">+0%</strong></div><input id="living-change" type="range" min="-20" max="40" value="0" step="1"><div class="range-mark"><span>−20%</span><span>0%</span><span>+40%</span></div></div><button id="run-scenario" class="btn primary full">Run stress test ↗</button><div class="info-note">Create a payment plan first.</div></div><div class="panel twin-result"><div class="eyebrow">YOUR WHAT-IF RESULT</div><h3>Your scenario</h3><div id="twin-empty" class="empty-state compact"><div class="empty-orbit">◈</div><strong>Awaiting a financial scenario</strong><p>Run a stress test to see results.</p></div><div id="twin-output" class="hidden"><div class="scenario-kpi"><div class="mini-label">SCENARIO PAYMENT COST</div><strong id="scenario-cost">—</strong><span id="scenario-change">—</span></div><div class="bars"><div><small>BASELINE</small><div class="bar-track"><div class="bar baseline" id="baseline-bar"></div></div><b id="baseline-value">—</b></div><div><small>STRESSED SCENARIO</small><div class="bar-track"><div class="bar stressed" id="stress-bar"></div></div><b id="stress-value">—</b></div></div><div class="stress-badges"><span id="reserve-badge"></span><span>Hypothetical • Not predictive</span></div><p class="muted" id="scenario-remaining"></p></div></div></div></section>
 
@@ -172,6 +212,29 @@
  <label><input type="checkbox" class="credit-check"> I understand how to read a credit report, if available.</label>
  <label><input type="checkbox" class="credit-check"> I have a plan to pay bills and repayments on time.</label>
  <div id="credit-progress" aria-live="polite">0 of 4 steps checked</div></div></div></section>
+
+      
+      <section id="profile" class="view finance-v10 profile-v10">
+        <div class="finance-heading"><div><span class="finance-eyebrow">ACCOUNT ACCESS · PROFILE</span><h1>My profile</h1><p>Sign in to save beneficiaries and continue where you left off in this demo workspace.</p></div><span class="finance-chip">👤 Demo sign-in</span></div>
+        <div class="profile-grid">
+          <div class="finance-panel"><div class="finance-section-title"><span class="finance-step">01</span><div><h2>My account</h2><p>Profile details come from your current session.</p></div></div>
+            <div id="profile-summary" class="profile-summary-card"><strong>Not signed in</strong><p>Use the form on the right to sign in to this demo workspace.</p></div>
+            <div class="finance-divider"></div>
+            <div class="finance-section-title"><span class="finance-step">02</span><div><h2>Saved beneficiaries</h2><p>Recipients you saved from the Send money flow.</p></div></div>
+            <div id="profile-beneficiary-list" class="beneficiary-list profile-beneficiary-list"><div class="empty-beneficiary">No saved beneficiaries yet.</div></div>
+          </div>
+          <div class="finance-panel"><div class="finance-section-title"><span class="finance-step">03</span><div><h2>Sign in</h2><p>This is a lightweight session-based demo login.</p></div></div>
+            <form id="auth-form" class="auth-form" autocomplete="on">
+              <div class="finance-field-grid"><label class="finance-field">Full name<input id="auth-name" type="text" maxlength="90" placeholder="Your full name" required></label><label class="finance-field">Email<input id="auth-email" type="email" maxlength="120" placeholder="name@example.com" required></label></div>
+              <div class="finance-field-grid"><label class="finance-field">Home country<select id="auth-country"></select></label><label class="finance-field">Password<input id="auth-password" type="password" minlength="6" maxlength="72" placeholder="Minimum 6 characters" required></label></div>
+              <div class="auth-actions"><button id="auth-submit" class="btn primary" type="submit">Sign in / create session →</button><button id="auth-logout" class="btn ghost" type="button">Log out</button></div>
+              <div id="auth-feedback" class="finance-feedback hidden" role="alert"></div>
+            </form>
+            <p class="finance-private-note">For this demo, login data stays in the active application session and is not meant for production use.</p>
+          </div>
+        </div>
+      </section>
+
 
       <section id="sources" class="view"><div class="page-head"><div><div class="eyebrow">TRUST LAYER / DATA PROVENANCE</div><h1>Data sources<span class="period">.</span></h1><p>Trace the evidence behind every estimate.</p></div><div class="head-symbol">▤</div></div><div class="source-banner"><span class="signal-live"></span><strong>Official published source</strong><span class="signal-offline"></span><strong>User-supplied quote</strong><span class="signal-missing"></span><strong>Unverified / unavailable</strong></div><div class="panel" style="padding:25px;margin-bottom:20px"><div class="eyebrow">OFFICIAL REFERENCE DATA · NOT BANK QUOTES</div><h2 style="margin:8px 0 10px">Student cost & visa benchmarks</h2><p style="margin-bottom:16px">Published benchmarks · Not personal invoices.</p><div id="research-benchmarks" class="source-grid"></div></div><div class="panel" style="padding:25px;margin-bottom:20px"><div class="eyebrow">DATED MARKET REFERENCES · NOT EXECUTABLE RATES</div><h2 style="margin:8px 0 10px">Historical exchange rates</h2><p style="margin-bottom:16px">Historical values. CNH and CNY are not interchangeable.</p><div id="research-fx" class="source-grid"></div></div><div id="sources-list" class="source-grid"></div></section>
 
@@ -200,5 +263,5 @@
 </div>
 <div id="modal-overlay" class="modal-overlay hidden"><div class="modal" role="dialog" aria-modal="true"><button id="close-modal" class="modal-close">✕</button><div id="modal-content"></div></div></div>
 <div id="toast" class="toast hidden"></div>
-<script src="/static/app.js?v=9.1"></script>
+<script src="/static/app.js?v=11.1"></script>
 </body></html>

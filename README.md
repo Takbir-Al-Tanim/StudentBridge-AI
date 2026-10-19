@@ -1,3 +1,5 @@
+> **V10 release (Send money & Compare payment routes):** The banking-style transfer review now validates recipient/routing details on the FastAPI server, includes country-specific codes, and produces tamper-evident previews. Visa/Mastercard uses only optional, authorized provider-hosted invoice checkout; arbitrary transfers are NOT enabled. PDF invoice extraction and the simplified responsive comparison page are updated. Read [the V10 upgrade notes](docs/V10_TRANSFER_AND_COMPARISON.md) before deploying.
+
 # StudentBridge AI
 
 ### Cross-Border & Student Finance Assistant · Clarity V9

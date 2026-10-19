@@ -18,8 +18,10 @@ def test_four_topic_c_views_and_nav():
 
 def test_remittance_marks_reference_not_quote():
     assert "async function calculateRemittance()" in JS
-    assert "Actual rates, intermediary charges, transfer availability" in JS
-    assert "route eligibility" in HTML.lower()
+    assert "async function confirmTransferReview()" in JS
+    assert "/api/transfers/quote" in JS
+    assert "quote_token" in JS
+    assert "eligible" in HTML.lower()
 
 def test_multicurrency_missing_rates_are_not_guessed():
     assert "async function calculateCurrencies()" in JS

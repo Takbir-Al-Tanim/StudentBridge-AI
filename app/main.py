@@ -13,6 +13,8 @@ from pypdf import PdfReader
 import httpx
 from fastapi import FastAPI, File, HTTPException, UploadFile, Header, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
 from starlette.templating import Jinja2Templates
@@ -20,6 +22,7 @@ from .logic import evaluate, simulate
 from .journey import planning_preview, prepare_steps, calendar_bytes
 from .assistant import make_answer
 from . import secure_card
+from . import transfer_flow
 
 BASE=Path(__file__).resolve().parent
 ROOT=BASE.parent
@@ -30,6 +33,10 @@ SOURCE_MAP={s['id']:s for s in SOURCES}
 SECRET=os.getenv('APP_SECRET','local-sandbox-only-change-before-deploy').encode()
 if os.getenv('APP_ENV')=='production' and (len(SECRET)<32 or SECRET==b'local-sandbox-only-change-before-deploy'):
     raise RuntimeError('Production requires a unique, strong APP_SECRET of at least 32 characters.')
+
+DEMO_SESSIONS:dict[str,dict]={}
+SESSION_COOKIE='studentbridge_demo_session'
+
 @asynccontextmanager
 async def lifespan(app:FastAPI):
     database.initialize()
@@ -37,9 +44,55 @@ async def lifespan(app:FastAPI):
         database.import_research_csv(ROOT/'data/research/corrected')
     yield
 
-app=FastAPI(title='StudentBridge AI | Cross-border Finance Agent',version='9.0.0',description='MySQL-powered six-country finance planning and sandbox execution',lifespan=lifespan)
+app=FastAPI(title='StudentBridge AI | Cross-border Finance Agent',version='11.0.0',description='MySQL-powered six-country finance planning and sandbox execution',lifespan=lifespan)
+@app.exception_handler(RequestValidationError)
+async def safe_validation_error(request:Request,exc:RequestValidationError):
+    # FastAPI's default errors may include the submitted field `input`.
+    # Never echo full beneficiary account information in transfer responses.
+    if request.url.path.startswith('/api/transfers/'):
+        first=exc.errors()[0] if exc.errors() else {}
+        loc='.'.join(str(k) for k in first.get('loc',()) if k not in ('body','query'))
+        allowed={'origin','destination','sender_name','beneficiary_name','bank_name',
+                 'account_number','routing_number','swift_bic','area','amount','method',
+                 'details','quote_token','confirmed'}
+        field=loc if loc in allowed else 'bank details'
+        return JSONResponse(status_code=422,content={'detail':f'Please check {field.replace("_"," ")} and its required format.'},
+                            headers={'Cache-Control':'no-store, private'})
+    return await request_validation_exception_handler(request,exc)
+
 app.mount('/static',StaticFiles(directory=BASE/'static'),name='static')
 templates=Jinja2Templates(directory=str(BASE/'templates'))
+
+
+def _session_store(request:Request):
+    sid=request.cookies.get(SESSION_COOKIE)
+    if sid and sid in DEMO_SESSIONS:
+        return sid, DEMO_SESSIONS[sid]
+    return None, None
+
+def _session_response(payload:dict,response:Response):
+    sid=secrets.token_urlsafe(24)
+    DEMO_SESSIONS[sid]={**payload,'beneficiaries':payload.get('beneficiaries',[])}
+    response.set_cookie(SESSION_COOKIE,sid,httponly=True,samesite='lax',secure=False,max_age=60*60*24*30)
+    return sid, DEMO_SESSIONS[sid]
+
+def _profile_from_state(state:dict|None):
+    if not state or not state.get('profile'):
+        return {'logged_in':False,'profile':None,'beneficiaries_count':0}
+    prof={k:state['profile'][k] for k in ('full_name','email','country') if k in state['profile']}
+    return {'logged_in':True,'profile':prof,'beneficiaries_count':len(state.get('beneficiaries',[]))}
+
+def _beneficiary_public(item:dict):
+    return {'id':item['id'],'nickname':item.get('nickname') or item.get('beneficiary_name'),
+            'beneficiary_name':item.get('beneficiary_name'),'bank_name':item.get('bank_name'),
+            'destination':item.get('destination'),'account_last4':str(item.get('account_number',''))[-4:],
+            'routing_label':transfer_flow.COUNTRY_ROUTING.get(item.get('destination',''),{}).get('label','Routing code')}
+
+def _require_session(request:Request):
+    sid,state=_session_store(request)
+    if not state or not state.get('profile'):
+        raise HTTPException(401,'Please sign in first.')
+    return sid,state
 
 def stamp(): return datetime.now(timezone.utc).isoformat()
 
@@ -184,6 +237,146 @@ class ChatRequest(BaseModel):
     plan_id:str|None=None
     country:str|None=None
 
+class AuthRequest(BaseModel):
+    full_name:str=Field(min_length=2,max_length=90)
+    email:str=Field(min_length=5,max_length=120)
+    country:str
+    password:str=Field(min_length=6,max_length=72)
+    @model_validator(mode='after')
+    def valid_auth(self):
+        if self.country not in COUNTRY:
+            raise ValueError('Choose a supported country.')
+        if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', self.email):
+            raise ValueError('Enter a valid email address.')
+        return self
+
+class BeneficiarySaveRequest(BaseModel):
+    nickname:str=Field(default='',max_length=60)
+    origin:str
+    destination:str
+    beneficiary_name:str=Field(min_length=2,max_length=90)
+    bank_name:str=Field(min_length=2,max_length=120)
+    account_number:str=Field(min_length=6,max_length=30)
+    routing_number:str=Field(min_length=3,max_length=20)
+    swift_bic:str=Field(default='',max_length=11)
+    area:str=Field(min_length=2,max_length=90)
+
+class RouteCompareRequest(BaseModel):
+    origin:str
+    destination:str
+    tuition_amount:float=Field(gt=0,le=2e9)
+    deadline:str|None=None
+    recipient_name:str=Field(default='',max_length=120)
+    @model_validator(mode='after')
+    def check_corridor(self):
+        if self.origin not in COUNTRY or self.destination not in COUNTRY or self.origin==self.destination:
+            raise ValueError('Choose two different supported countries.')
+        if self.deadline:
+            try: date.fromisoformat(self.deadline)
+            except ValueError: raise ValueError('Deadline must use YYYY-MM-DD.')
+        return self
+
+
+@app.get('/api/auth/profile')
+def auth_profile(request:Request):
+    _,state=_session_store(request)
+    return _profile_from_state(state)
+
+@app.post('/api/auth/login')
+def auth_login(data:AuthRequest,response:Response):
+    profile={'full_name':data.full_name.strip(),'email':data.email.strip().lower(),'country':data.country}
+    sid,session=_session_response({'profile':profile,'beneficiaries':[]},response)
+    audit('AUTH_SESSION_CREATED',sid[:12],{'country':data.country})
+    return _profile_from_state(session)
+
+@app.post('/api/auth/logout')
+def auth_logout(request:Request,response:Response):
+    sid,_=_session_store(request)
+    if sid and sid in DEMO_SESSIONS:
+        DEMO_SESSIONS.pop(sid,None)
+    response.delete_cookie(SESSION_COOKIE)
+    return {'ok':True}
+
+@app.get('/api/beneficiaries')
+def list_beneficiaries(request:Request):
+    _,state=_require_session(request)
+    return {'beneficiaries':[_beneficiary_public(item) for item in state.get('beneficiaries',[])]}
+
+@app.get('/api/beneficiaries/{beneficiary_id}')
+def get_beneficiary(beneficiary_id:str,request:Request):
+    _,state=_require_session(request)
+    for item in state.get('beneficiaries',[]):
+        if item['id']==beneficiary_id:
+            return {'beneficiary':item}
+    raise HTTPException(404,'Beneficiary not found.')
+
+@app.post('/api/beneficiaries')
+def save_beneficiary(data:BeneficiarySaveRequest,request:Request):
+    sid,state=_require_session(request)
+    dummy=transfer_flow.TransferDetails(origin=data.origin,destination=data.destination,sender_name='Session User',
+        beneficiary_name=data.beneficiary_name,bank_name=data.bank_name,account_number=data.account_number,
+        routing_number=data.routing_number,swift_bic=data.swift_bic,area=data.area,amount='1.00',method='bank')
+    item={
+        'id':'ben-'+uuid.uuid4().hex[:10],
+        'nickname':data.nickname.strip() or data.beneficiary_name.strip(),
+        'origin':data.origin,'destination':data.destination,
+        'beneficiary_name':dummy.beneficiary_name,'bank_name':dummy.bank_name,
+        'account_number':dummy.account_number,'routing_number':dummy.routing_number,
+        'swift_bic':dummy.swift_bic,'area':dummy.area,'saved_at':stamp()
+    }
+    state.setdefault('beneficiaries',[])
+    # replace same bank/account combination
+    state['beneficiaries']=[x for x in state['beneficiaries'] if not (x['destination']==item['destination'] and x['account_number']==item['account_number'])]
+    state['beneficiaries'].insert(0,item)
+    state['beneficiaries']=state['beneficiaries'][:12]
+    audit('BENEFICIARY_SAVED',sid[:12],{'destination':item['destination'],'bank_name':item['bank_name'],'last4':item['account_number'][-4:]})
+    return {'saved':True,'beneficiary':_beneficiary_public(item),'count':len(state['beneficiaries'])}
+
+@app.post('/api/routes/compare')
+async def compare_routes_simple(data:RouteCompareRequest):
+    orig_currency=COUNTRY[data.origin]['currency']
+    dest_currency=COUNTRY[data.destination]['currency']
+    rate_info=await fx(base=dest_currency,quote=orig_currency)
+    if not rate_info['available']:
+        raise HTTPException(503,'Reference exchange rate unavailable. Please try again later.')
+    rate=float(rate_info['rate'])
+    days_left=None
+    if data.deadline:
+        days_left=(date.fromisoformat(data.deadline)-date.today()).days
+    base_send=data.tuition_amount*rate
+    options=[
+        {'id':'partner','name':'Student remittance partner','fixed':8.0,'percent':0.35,'markup':0.20,'eta':'Same day / next day','best_for':'Best overall for student remittance'},
+        {'id':'bank','name':'Bank transfer','fixed':18.0,'percent':0.60,'markup':0.45,'eta':'1–2 business days','best_for':'Best for direct beneficiary bank accounts'},
+        {'id':'card','name':'Visa / Mastercard','fixed':0.0,'percent':2.20,'markup':0.65,'eta':'Instant authorization','best_for':'Best for urgent payments to approved merchants only'},
+    ]
+    results=[]
+    for row in options:
+        fee=round(base_send*(row['percent']/100.0)+row['fixed'],2)
+        total=round(base_send*(1+(row['markup']/100.0))+fee,2)
+        results.append({
+            'route_id':row['id'],'provider':row['name'],'payment_amount':round(data.tuition_amount,2),'payment_currency':dest_currency,
+            'sending_estimate':total,'sending_currency':orig_currency,'service_fee':fee,'reference_rate':rate,
+            'rate_label':f"1 {dest_currency} = {rate:.4f} {orig_currency}",'eta':row['eta'],'best_for':row['best_for'],
+            'notes':'Illustrative comparison using a published reference FX rate, plus modeled fee assumptions.',
+        })
+    results.sort(key=lambda x:x['sending_estimate'])
+    recommended=results[0]['route_id'] if days_left is None or days_left>3 else ('card' if any(r['route_id']=='card' for r in results) else results[0]['route_id'])
+    audit('ROUTE_COMPARISON_CREATED',f"CMP-{uuid.uuid4().hex[:8].upper()}",{'origin':data.origin,'destination':data.destination,'amount':str(data.tuition_amount)})
+    return {'origin':data.origin,'destination':data.destination,'recipient_name':data.recipient_name,'payment_amount':data.tuition_amount,
+            'payment_currency':dest_currency,'sending_currency':orig_currency,'days_left':days_left,
+            'rate_date':rate_info['date'],'rate_source':rate_info['source_url'],'recommended_route_id':recommended,'routes':results}
+
+@app.middleware('http')
+async def banking_response_headers(request:Request,call_next):
+    response=await call_next(request)
+    response.headers['X-Content-Type-Options']='nosniff'
+    response.headers['Referrer-Policy']='strict-origin-when-cross-origin'
+    response.headers['X-Frame-Options']='DENY'
+    response.headers['Permissions-Policy']='camera=(), microphone=(), geolocation=()'
+    if request.url.path.startswith('/api/transfers/') or request.url.path.startswith('/api/invoices/'):
+        response.headers['Cache-Control']='no-store, private'
+    return response
+
 @app.get('/',response_class=HTMLResponse)
 def home(request:Request):
     return templates.TemplateResponse(request,'index.html',{})
@@ -191,6 +384,64 @@ def home(request:Request):
 
 # Card information and billing address are entered only on the provider's
 # hosted payment page, never in a StudentBridge form or database.
+@app.get('/api/transfers/requirements')
+def transfer_requirements():
+    return {'countries':transfer_flow.COUNTRY_ROUTING,
+            'card_checkout':secure_card.public_status(),
+            'notice':'Bank details are used only to prepare this review and are not stored. No remittance provider is connected.'}
+
+
+def transfer_origin_check(request:Request):
+    # Mutating browser requests must be same-origin and JSON, even though this
+    # anonymous preview flow does NOT establish user authentication.
+    origin=request.headers.get('origin')
+    host=request.headers.get('host','').lower()
+    parsed=urlparse(origin) if origin else None
+    if parsed and (parsed.netloc.lower()!=host or parsed.scheme not in ('http','https')):
+        raise HTTPException(403,'Cross-site transfer request blocked.')
+    if request.headers.get('x-sb-intent')!='transfer-review':
+        raise HTTPException(403,'Missing transfer review request header.')
+    if 'application/json' not in request.headers.get('content-type',''):
+        raise HTTPException(415,'JSON content type is required.')
+
+
+@app.post('/api/transfers/quote')
+async def transfer_quote(details:transfer_flow.TransferDetails,request:Request):
+    transfer_origin_check(request)
+    currency=COUNTRY[details.origin]['currency']
+    dest_currency=COUNTRY[details.destination]['currency']
+    rate_info=await fx(base=currency,quote=dest_currency)
+    if not rate_info['available']:
+        raise HTTPException(503,'Reference exchange rate unavailable. We cannot generate a reliable review right now.')
+    rate=float(rate_info['rate'])
+    result=transfer_flow.make_estimate(details,rate,currency)
+    result.update({'receiving_currency':dest_currency,'reference_rate':rate,
+                   'rate_date':rate_info['date'],'rate_source':rate_info['source_url'],
+                   'expires_in_seconds':900,
+                   'quote_token':transfer_flow.seal(details,rate,rate_info['date'],dest_currency,SECRET)})
+    return result
+
+
+@app.post('/api/transfers/prepare')
+def transfer_prepare(approval:transfer_flow.TransferApproval,request:Request):
+    transfer_origin_check(request)
+    if not approval.confirmed:
+        raise HTTPException(403,'Review and confirm beneficiary details to prepare transfer instructions.')
+    try:
+        review=transfer_flow.unseal(approval.quote_token,approval.details,SECRET)
+    except ValueError as error:
+        raise HTTPException(409,str(error)) from error
+    reference='SB-REVIEW-'+uuid.uuid4().hex[:10].upper()
+    # Audit contains no full bank account, beneficiary name or address.
+    audit('BANK_TRANSFER_REVIEW_PREPARED',reference,{'origin':approval.details.origin,
+          'destination':approval.details.destination,'method':'bank','amount':str(approval.details.amount)})
+    return {'reference':reference,'status':'INSTRUCTIONS_PREPARED_ONLY',
+            'beneficiary_account_last4':approval.details.account_number[-4:],
+            'beneficiary_bank':approval.details.bank_name,
+            'reference_rate':review['rate'],
+            'message':'Review saved as an audit event. No money was sent. To proceed, use a licensed bank or authorized payment provider and verify the account and fees independently.'}
+
+
 @app.get('/api/card/availability')
 def card_availability():
     return secure_card.public_status()
@@ -281,9 +532,31 @@ async def fx(base:str='GBP',quote:str='AUD'):
                 'source':'Frankfurter reference FX API','source_url':endpoint,'classification':'LIVE_REFERENCE_NOT_PROVIDER_QUOTE',
                 'proof':sign_fx(base,quote,data['rate'],data.get('date')),
                 'warning':'Reference rate, not a bank transfer quote. Fees and spreads are excluded.'}
-    except (httpx.HTTPError,ValueError,KeyError) as exc:
-        return {'available':False,'base':base,'quote':quote,'rate':None,'source_url':endpoint,
-                'classification':'UNAVAILABLE','warning':'The reference FX service could not be reached. Enter an actual documented quote or try again later.'}
+    except (httpx.HTTPError,ValueError,KeyError):
+        # Fallback includes BDT, which is not consistently present in ECB-based feeds.
+        # This is still a published REFERENCE rate, never an executable bank quote.
+        second='https://open.er-api.com/v6/latest/USD'
+        try:
+            async with httpx.AsyncClient(timeout=6,follow_redirects=False) as client:
+                response=await client.get(second)
+                response.raise_for_status(); result=response.json()
+            rates=result.get('rates',{})
+            if result.get('result')!='success' or result.get('base_code')!='USD':
+                raise ValueError('Unsupported FX response')
+            a=float(rates[base]);b=float(rates[quote])
+            if not (0<a<1e8 and 0<b<1e8):raise ValueError('Invalid FX rate')
+            rate=b/a
+            if not (0<rate<1e8):raise ValueError('Invalid derived FX rate')
+            observed=datetime.fromtimestamp(int(result['time_last_update_unix']),timezone.utc).date().isoformat()
+            return {'available':True,'base':base,'quote':quote,'rate':rate,'date':observed,
+                    'source':'ExchangeRate-API open reference feed (USD cross-rate)',
+                    'source_url':second,'classification':'PUBLISHED_FX_REFERENCE_NOT_BANK_QUOTE',
+                    'proof':sign_fx(base,quote,rate,observed),
+                    'warning':'Published daily USD-cross reference from ExchangeRate-API; not an executable provider quote. Fees and bank spread are excluded.'}
+        except (httpx.HTTPError,ValueError,TypeError,KeyError,OverflowError,ZeroDivisionError):
+            return {'available':False,'base':base,'quote':quote,'rate':None,
+                    'source_url':endpoint,'classification':'UNAVAILABLE',
+                    'warning':'Published exchange-rate sources could not be reached. No rate has been invented.'}
 
 @app.post('/api/plans')
 def make_plan(request:PlanRequest):
@@ -419,8 +692,10 @@ def credit(country:str):
 
 @app.post('/api/invoices/analyze')
 async def invoice_analysis(file:UploadFile=File(...)):
-    raw=await file.read(2_500_001)
-    if len(raw)>2_500_000:raise HTTPException(413,'Use a PDF smaller than 2.5 MB.')
+    if file.content_type not in ('application/pdf','application/octet-stream'):
+        raise HTTPException(415,'Select a PDF invoice.')
+    raw=await file.read(4_000_001)
+    if len(raw)>4_000_000:raise HTTPException(413,'Use a PDF smaller than 4 MB.')
     if not raw.startswith(b'%PDF'):raise HTTPException(415,'Only PDF invoices are supported.')
     try:
         pdf=PdfReader(BytesIO(raw), strict=False)
@@ -430,7 +705,8 @@ async def invoice_analysis(file:UploadFile=File(...)):
     except Exception:raise HTTPException(422,'Could not read PDF. Scanned documents may need OCR.')
     if not text.strip():return {'text_found':False,'warning':'No selectable text found. Enter invoice information manually or use an OCR-enabled version.', 'fields':{}}
     # Extract possibilities; do not assert that any one is the payable balance.
-    money_matches=re.findall(r'(?:GBP|AUD|CNY|JPY|KRW|BDT|£|¥|₩|৳|\$)\s*([\d,]+(?:\.\d{1,2})?)',text,re.I)
+    money_matches=re.findall(r'(?:GBP|AUD|CNY|JPY|KRW|BDT|£|¥|₩|৳|\$)\s*([\d,]+(?:\.\d{1,2})?)|([\d,]+(?:\.\d{1,2})?)\s*(?:GBP|AUD|CNY|JPY|KRW|BDT)\b',text,re.I)
+    money_matches=[first or second for first,second in money_matches]
     dates=re.findall(r'\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b',text)
     suspicious=bool(re.search(r'ignore previous instructions|system prompt|override all rules|send.*credentials',text,re.I))
     return {'text_found':True,'fields':{'amount_candidates':money_matches[:10],'date_candidates':dates[:10],

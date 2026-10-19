@@ -8,7 +8,6 @@ _TMP=Path(tempfile.mkdtemp(prefix='studentbridge_test_'))
 os.environ['STUDENTBRIDGE_TEST_MODE']='1'
 os.environ['DATABASE_URL']='sqlite+pysqlite:///'+str(_TMP/'test.db')
 os.environ['APP_SECRET']='test_only_changing_key_does_not_authorize_real_payments'
-os.environ['GEMINI_API_KEY'] = ''
 from app import database
 database.initialize()
 database.import_research_csv(Path(__file__).resolve().parents[1]/'data/research/corrected')
